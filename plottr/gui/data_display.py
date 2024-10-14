@@ -3,9 +3,9 @@
 UI elements for inspecting data structure and content.
 """
 
-from typing import Union, List, Tuple, Dict, Any, Optional
+from typing import Any
 
-from .. import QtCore, QtWidgets, Signal, Slot
+from .. import QtWidgets, Signal, Slot
 from ..data.datadict import DataDictBase
 
 
@@ -15,16 +15,15 @@ class DataSelectionWidget(QtWidgets.QTreeWidget):
     #: signal (List[str]) that is emitted when the selection is modified.
     dataSelectionMade = Signal(list)
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None,
-                 readonly: bool = False):
+    def __init__(self, parent: QtWidgets.QWidget | None = None, readonly: bool = False):
         super().__init__(parent)
 
         self.setColumnCount(3)
-        self.setHeaderLabels(['Name', 'Dependencies', 'Size'])
-        self.dataItems: Dict[str, Any] = {}
+        self.setHeaderLabels(["Name", "Dependencies", "Size"])
+        self.dataItems: dict[str, Any] = {}
 
         self._dataStructure = DataDictBase()
-        self._dataShapes: Dict[str, Tuple[int, ...]] = {}
+        self._dataShapes: dict[str, tuple[int, ...]] = {}
         self._readonly = readonly
 
         self.setSelectionMode(self.MultiSelection)
@@ -33,13 +32,12 @@ class DataSelectionWidget(QtWidgets.QTreeWidget):
     def _makeItem(self, name: str) -> QtWidgets.QTreeWidgetItem:
         shape = self._dataShapes.get(name, tuple())
         label = f"{self._dataStructure.label(name)}"
-        axlabels = [str(self._dataStructure.label(d)) for d in
-                    self._dataStructure.axes(name)]
+        axlabels = [
+            str(self._dataStructure.label(d)) for d in self._dataStructure.axes(name)
+        ]
         deps = ", ".join(axlabels)
 
-        return QtWidgets.QTreeWidgetItem([
-            label, deps, str(shape)
-        ])
+        return QtWidgets.QTreeWidgetItem([label, deps, str(shape)])
 
     @Slot(int)
     def _processCbChange(self, _: int) -> None:
@@ -70,7 +68,7 @@ class DataSelectionWidget(QtWidgets.QTreeWidget):
         if structure is not None:
             self._populate()
 
-    def setShape(self, shape: Dict[str, Tuple[int, ...]]) -> None:
+    def setShape(self, shape: dict[str, tuple[int, ...]]) -> None:
         """Set shapes of given elements"""
         for i in range(self.topLevelItemCount()):
             item = self.topLevelItem(i)
@@ -97,16 +95,16 @@ class DataSelectionWidget(QtWidgets.QTreeWidget):
             if item is v:
                 return k
 
-        raise RuntimeError(f'Item {item} not registered.')
+        raise RuntimeError(f"Item {item} not registered.")
 
-    def getSelectedData(self) -> List[str]:
+    def getSelectedData(self) -> list[str]:
         """Return a list of currently selected items (by name)"""
         ret = []
         for w in self.selectedItems():
             ret.append(self.nameFromItem(w))
         return ret
 
-    def setSelectedData(self, vals: List[str]) -> None:
+    def setSelectedData(self, vals: list[str]) -> None:
         """select all given items, uncheck all others."""
         for n, w in self.dataItems.items():
             w.setSelected(n in vals)

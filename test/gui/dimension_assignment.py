@@ -6,7 +6,7 @@ Testing for axis settings / dimension-reduction widgets.
 from plottr import QtWidgets
 from plottr.data.datadict import datadict_to_meshgrid
 from plottr.gui.tools import widgetDialog
-from plottr.node.dim_reducer import XYSelectionWidget, DimensionReducer, XYSelector
+from plottr.node.dim_reducer import DimensionReducer, XYSelectionWidget, XYSelector
 from plottr.node.tools import linearFlowchart
 from plottr.utils import testdata
 
@@ -20,9 +20,7 @@ def xySelectionWidget():
     widget.rolesChanged.connect(selectionCb)
 
     # set up the UI, feed data in
-    data = datadict_to_meshgrid(
-        testdata.three_compatible_3d_sets(5, 5, 5)
-    )
+    data = datadict_to_meshgrid(testdata.three_compatible_3d_sets(5, 5, 5))
     dialog = widgetDialog(widget)
     widget.setData(data)
     widget.clear()
@@ -34,13 +32,11 @@ def dimReduction(interactive=False):
     if not interactive:
         app = QtWidgets.QApplication([])
 
-    fc = linearFlowchart(('reducer', DimensionReducer))
-    reducer = fc.nodes()['reducer']
-    dialog = widgetDialog(reducer.ui, 'reducer')
+    fc = linearFlowchart(("reducer", DimensionReducer))
+    reducer = fc.nodes()["reducer"]
+    dialog = widgetDialog(reducer.ui, "reducer")
 
-    data = datadict_to_meshgrid(
-        testdata.three_compatible_3d_sets(2, 2, 2)
-    )
+    data = datadict_to_meshgrid(testdata.three_compatible_3d_sets(2, 2, 2))
     fc.setInput(dataIn=data)
 
     if not interactive:
@@ -53,13 +49,11 @@ def xySelection(interactive=False):
     if not interactive:
         app = QtWidgets.QApplication([])
 
-    fc = linearFlowchart(('xysel', XYSelector))
-    selector = fc.nodes()['xysel']
-    dialog = widgetDialog(selector.ui, 'xysel')
+    fc = linearFlowchart(("xysel", XYSelector))
+    selector = fc.nodes()["xysel"]
+    dialog = widgetDialog(selector.ui, "xysel")
 
-    data = datadict_to_meshgrid(
-        testdata.three_compatible_3d_sets(4, 4, 4)
-    )
+    data = datadict_to_meshgrid(testdata.three_compatible_3d_sets(4, 4, 4))
     fc.setInput(dataIn=data)
 
     if not interactive:

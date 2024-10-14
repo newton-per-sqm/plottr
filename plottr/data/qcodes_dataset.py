@@ -3,24 +3,23 @@ qcodes_dataset.py
 
 Dealing with qcodes dataset (the database) data in plottr.
 """
+
 import os
 from itertools import chain
 from operator import attrgetter
-from typing import Dict, List, Set, Union, TYPE_CHECKING, Any, Tuple, Optional, cast
-
-from typing_extensions import TypedDict
+from typing import TYPE_CHECKING, Any, Union, cast
 
 import pandas as pd
-
 from qcodes.dataset.data_set import load_by_id
 from qcodes.dataset.experiment_container import experiments
 from qcodes.dataset.sqlite.database import initialise_or_create_database_at
+from typing_extensions import TypedDict
 
-from .datadict import DataDictBase, DataDict, combine_datadicts
 from ..node.node import Node, updateOption
+from .datadict import DataDict, DataDictBase, combine_datadicts
 
-__author__ = 'Wolfgang Pfaff'
-__license__ = 'MIT'
+__author__ = "Wolfgang Pfaff"
+__license__ = "MIT"
 
 if TYPE_CHECKING:
     try:
@@ -30,12 +29,9 @@ if TYPE_CHECKING:
     from qcodes import ParamSpec
 
 
-def _get_names_of_standalone_parameters(paramspecs: List['ParamSpec']
-                                        ) -> Set[str]:
-    all_independents = set(spec.name
-                           for spec in paramspecs
-                           if len(spec.depends_on_) == 0)
-    used_independents = set(d for spec in paramspecs for d in spec.depends_on_)
+def _get_names_of_standalone_parameters(paramspecs: list["ParamSpec"]) -> set[str]:
+    all_independents = {spec.name for spec in paramspecs if len(spec.depends_on_) == 0}
+    used_independents = {d for spec in paramspecs for d in spec.depends_on_}
     standalones = all_independents.difference(used_independents)
     return standalones
 
@@ -43,14 +39,16 @@ def _get_names_of_standalone_parameters(paramspecs: List['ParamSpec']
 class IndependentParameterDict(TypedDict):
     unit: str
     label: str
-    values: List[Any]
+    values: list[Any]
 
 
 class DependentParameterDict(IndependentParameterDict):
-    axes: List[str]
+    axes: list[str]
 
 
-DataSetStructureDict = Dict[str, Union[IndependentParameterDict, DependentParameterDict]]
+DataSetStructureDict = dict[
+    str, Union[IndependentParameterDict, DependentParameterDict]
+]
 
 
 class DataSetInfoDict(TypedDict):
@@ -61,7 +59,7 @@ class DataSetInfoDict(TypedDict):
     completed_time: str
     started_date: str
     started_time: str
-    structure: Optional[DataSetStructureDict]
+    structure: DataSetStructureDict | None
     records: int
     guid: str
     inspectr_tag: str
@@ -70,9 +68,7 @@ class DataSetInfoDict(TypedDict):
 # Tools for extracting information on runs in a database
 
 
-def get_ds_structure(
-        ds: 'DataSetProtocol'
-) -> DataSetStructureDict:
+def get_ds_structure(ds: "DataSetProtocol") -> DataSetStructureDict:
     """
     Return the structure of the dataset, i.e., a dictionary in the form
         {
@@ -104,18 +100,20 @@ def get_ds_structure(
     for spec in paramspecs:
         if spec.name not in standalones:
             if len(spec.depends_on_) > 0:
-                structure[spec.name] = DependentParameterDict(unit=spec.unit,
-                                                              label=spec.label,
-                                                              values=[],
-                                                              axes=list(spec.depends_on_))
+                structure[spec.name] = DependentParameterDict(
+                    unit=spec.unit,
+                    label=spec.label,
+                    values=[],
+                    axes=list(spec.depends_on_),
+                )
             else:
-                structure[spec.name] = IndependentParameterDict(unit=spec.unit,
-                                                                label=spec.label,
-                                                                values=[])
+                structure[spec.name] = IndependentParameterDict(
+                    unit=spec.unit, label=spec.label, values=[]
+                )
     return structure
 
 
-def get_ds_info(ds: 'DataSetProtocol', get_structure: bool = True) -> DataSetInfoDict:
+def get_ds_info(ds: "DataSetProtocol", get_structure: bool = True) -> DataSetInfoDict:
     """
     Get some info on a DataSet in dict.
 
@@ -127,19 +125,19 @@ def get_ds_info(ds: 'DataSetProtocol', get_structure: bool = True) -> DataSetInf
         completed_date = _complete_ts[:10]
         completed_time = _complete_ts[11:]
     else:
-        completed_date = ''
-        completed_time = ''
+        completed_date = ""
+        completed_time = ""
 
     _start_ts = ds.run_timestamp()
     if _start_ts is not None:
         started_date = _start_ts[:10]
         started_time = _start_ts[11:]
     else:
-        started_date = ''
-        started_time = ''
+        started_date = ""
+        started_time = ""
 
     if get_structure:
-        structure: Optional[DataSetStructureDict] = get_ds_structure(ds)
+        structure: DataSetStructureDict | None = get_ds_structure(ds)
     else:
         structure = None
 
@@ -154,13 +152,13 @@ def get_ds_info(ds: 'DataSetProtocol', get_structure: bool = True) -> DataSetInf
         structure=structure,
         records=ds.number_of_results,
         guid=ds.guid,
-        inspectr_tag=ds.metadata.get('inspectr_tag', ''),
+        inspectr_tag=ds.metadata.get("inspectr_tag", ""),
     )
 
     return data
 
 
-def load_dataset_from(path: str, run_id: int) -> 'DataSetProtocol':
+def load_dataset_from(path: str, run_id: int) -> "DataSetProtocol":
     """
     Loads ``DataSet`` with the given ``run_id`` from a database file that
     is located in in the given ``path``.
@@ -172,9 +170,9 @@ def load_dataset_from(path: str, run_id: int) -> 'DataSetProtocol':
     return load_by_id(run_id=run_id)
 
 
-def get_runs_from_db(path: str, start: int = 0,
-                     stop: Union[None, int] = None,
-                     get_structure: bool = False) -> Dict[int, DataSetInfoDict]:
+def get_runs_from_db(
+    path: str, start: int = 0, stop: None | int = None, get_structure: bool = False
+) -> dict[int, DataSetInfoDict]:
     """
     Get a db ``overview`` dictionary from the db located in ``path``. The
     ``overview`` dictionary maps ``DataSet.run_id``s to dataset information as
@@ -190,15 +188,16 @@ def get_runs_from_db(path: str, start: int = 0,
 
     datasets = sorted(
         chain.from_iterable(exp.data_sets() for exp in experiments()),
-        key=attrgetter('run_id')
+        key=attrgetter("run_id"),
     )
 
     # There is no need for checking whether ``stop`` is ``None`` because if
     # it is the following is simply equivalent to ``datasets[start:]``
     datasets = datasets[start:stop]
 
-    overview = {ds.run_id: get_ds_info(ds, get_structure=get_structure)
-                for ds in datasets}
+    overview = {
+        ds.run_id: get_ds_info(ds, get_structure=get_structure) for ds in datasets
+    }
     return overview
 
 
@@ -208,13 +207,14 @@ def get_runs_from_db_as_dataframe(path: str) -> pd.DataFrame:
     as pandas dataframe.
     """
     overview = get_runs_from_db(path)
-    df = pd.DataFrame.from_dict(overview, orient='index')
+    df = pd.DataFrame.from_dict(overview, orient="index")
     return df
 
 
 # Extracting data
 
-def ds_to_datadicts(ds: 'DataSetProtocol') -> Dict[str, DataDict]:
+
+def ds_to_datadicts(ds: "DataSetProtocol") -> dict[str, DataDict]:
     """
     Make DataDicts from a qcodes DataSet.
 
@@ -225,27 +225,31 @@ def ds_to_datadicts(ds: 'DataSetProtocol') -> Dict[str, DataDict]:
                      axes.
     """
     ret = {}
-    has_cache = hasattr(ds, 'cache')
+    has_cache = hasattr(ds, "cache")
     if has_cache:
         pdata = ds.cache.data()
     else:
         # qcodes < 0.17
         pdata = ds.get_parameter_data()
     for p, spec in ds.paramspecs.items():
-        if spec.depends_on != '':
+        if spec.depends_on != "":
             axes = spec.depends_on_
             data = dict()
-            data[p] = dict(unit=spec.unit, label=spec.label, axes=axes, values=pdata[p][p])
+            data[p] = dict(
+                unit=spec.unit, label=spec.label, axes=axes, values=pdata[p][p]
+            )
             for ax in axes:
                 axspec = ds.paramspecs[ax]
-                data[ax] = dict(unit=axspec.unit, label=axspec.label, values=pdata[p][ax])
+                data[ax] = dict(
+                    unit=axspec.unit, label=axspec.label, values=pdata[p][ax]
+                )
             ret[p] = DataDict(**data)
             ret[p].validate()
 
     return ret
 
 
-def ds_to_datadict(ds: 'DataSetProtocol') -> DataDictBase:
+def ds_to_datadict(ds: "DataSetProtocol") -> DataDictBase:
     ddicts = ds_to_datadicts(ds)
     ddict = combine_datadicts(*[v for k, v in ddicts.items()])
     return ddict
@@ -253,43 +257,43 @@ def ds_to_datadict(ds: 'DataSetProtocol') -> DataDictBase:
 
 ### qcodes dataset loader node
 
+
 class QCodesDSLoader(Node):
-    nodeName = 'QCodesDSLoader'
+    nodeName = "QCodesDSLoader"
     uiClass = None
     useUi = False
 
     def __init__(self, *arg: Any, **kw: Any):
-        self._pathAndId: Tuple[Optional[str], Optional[int]] = (None, None)
+        self._pathAndId: tuple[str | None, int | None] = (None, None)
         self.nLoadedRecords = 0
-        self._dataset: Optional[DataSetProtocol] = None
+        self._dataset: DataSetProtocol | None = None
 
         super().__init__(*arg, **kw)
 
     ### Properties
 
     @property
-    def pathAndId(self) -> Tuple[Optional[str], Optional[int]]:
+    def pathAndId(self) -> tuple[str | None, int | None]:
         return self._pathAndId
 
     @pathAndId.setter
-    @updateOption('pathAndId')
-    def pathAndId(self, val: Tuple[Optional[str], Optional[int]]) -> None:
+    @updateOption("pathAndId")
+    def pathAndId(self, val: tuple[str | None, int | None]) -> None:
         if val != self.pathAndId:
             self._pathAndId = val
             self.nLoadedRecords = 0
             self._dataset = None
 
-    def process(self, dataIn: Optional[DataDictBase] = None) -> Optional[Dict[str, Any]]:
+    def process(self, dataIn: DataDictBase | None = None) -> dict[str, Any] | None:
         if dataIn is not None:
             raise RuntimeError("QCodesDSLoader.process does not take a dataIn argument")
         if None not in self._pathAndId:
-            path, runId = cast(Tuple[str, int], self._pathAndId)
+            path, runId = cast(tuple[str, int], self._pathAndId)
 
             if self._dataset is None:
                 self._dataset = load_dataset_from(path, runId)
 
             if self._dataset.number_of_results > self.nLoadedRecords:
-
                 guid = self._dataset.guid
 
                 experiment_name = self._dataset.exp_name
@@ -299,10 +303,12 @@ class QCodesDSLoader(Node):
                 run_timestamp = self._dataset.run_timestamp()
                 completed_timestamp = self._dataset.completed_timestamp()
 
-                title = f"{os.path.split(path)[-1]} | " \
-                        f"run ID: {runId} | GUID: {guid}" \
-                        "\n" \
-                        f"{sample_name} | {experiment_name} | {dataset_name}"
+                title = (
+                    f"{os.path.split(path)[-1]} | "
+                    f"run ID: {runId} | GUID: {guid}"
+                    "\n"
+                    f"{sample_name} | {experiment_name} | {dataset_name}"
+                )
 
                 info = f"""Started: {run_timestamp}
 Finished: {completed_timestamp}
@@ -310,20 +316,20 @@ DB-File [ID]: {path} [{runId}]"""
 
                 data = ds_to_datadict(self._dataset)
 
-                data.add_meta('qcodes_experiment_name', experiment_name)
-                data.add_meta('qcodes_sample_name', sample_name)
-                data.add_meta('qcodes_dataset_name', dataset_name)
+                data.add_meta("qcodes_experiment_name", experiment_name)
+                data.add_meta("qcodes_sample_name", sample_name)
+                data.add_meta("qcodes_dataset_name", dataset_name)
 
-                data.add_meta('title', title)
-                data.add_meta('info', info)
+                data.add_meta("title", title)
+                data.add_meta("info", info)
 
-                data.add_meta('qcodes_guid', guid)
-                data.add_meta('qcodes_db', path)
-                data.add_meta('qcodes_runId', runId)
-                data.add_meta('qcodes_completedTS', completed_timestamp)
-                data.add_meta('qcodes_runTS', run_timestamp)
+                data.add_meta("qcodes_guid", guid)
+                data.add_meta("qcodes_db", path)
+                data.add_meta("qcodes_runId", runId)
+                data.add_meta("qcodes_completedTS", completed_timestamp)
+                data.add_meta("qcodes_runTS", run_timestamp)
                 qcodes_shape = getattr(self._dataset.description, "shapes", None)
-                data.add_meta('qcodes_shape', qcodes_shape)
+                data.add_meta("qcodes_shape", qcodes_shape)
 
                 self.nLoadedRecords = self._dataset.number_of_results
 

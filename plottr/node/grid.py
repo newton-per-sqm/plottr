@@ -3,20 +3,22 @@ grid.py
 
 A node and widget for placing data onto a grid (or not).
 """
-from enum import Enum, unique
 
-from typing import Tuple, Dict, Any, List, Optional, Sequence, cast
+from collections.abc import Sequence
+from enum import Enum, unique
+from typing import Any, cast
 
 from typing_extensions import TypedDict
 
-from plottr import QtGui, Signal, Slot, QtWidgets
-from .node import Node, NodeWidget, updateOption, updateGuiFromNode
-from ..data import datadict as dd
-from ..data.datadict import DataDict, MeshgridDataDict, DataDictBase, GriddingError
+from plottr import QtWidgets, Signal, Slot
 from plottr.icons import get_gridIcon
 
-__author__ = 'Wolfgang Pfaff'
-__license__ = 'MIT'
+from ..data import datadict as dd
+from ..data.datadict import DataDict, DataDictBase, GriddingError, MeshgridDataDict
+from .node import Node, NodeWidget, updateGuiFromNode, updateOption
+
+__author__ = "Wolfgang Pfaff"
+__license__ = "MIT"
 
 
 @unique
@@ -35,14 +37,17 @@ class GridOption(Enum):
     #: read the shape from DataSet Metadata (if available)
     metadataShape = 3
 
+
 class _WidgetDict(TypedDict):
     name: QtWidgets.QComboBox
     shape: QtWidgets.QSpinBox
 
+
 #: Type for additional options when specifying the shape
 class SpecShapeType(TypedDict):
-    order: Tuple[str, ...]
-    shape: Tuple[int, ...]
+    order: tuple[str, ...]
+    shape: tuple[int, ...]
+
 
 class ShapeSpecificationWidget(QtWidgets.QWidget):
     """A widget that allows the user to specify a grid shape.
@@ -56,15 +61,15 @@ class ShapeSpecificationWidget(QtWidgets.QWidget):
     #: signal that is emitted when we want to communicate a new shape
     newShapeNotification = Signal(dict)
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
 
-        self._axes: List[str] = []
-        self._widgets: Dict[int, _WidgetDict] = {}
+        self._axes: list[str] = []
+        self._widgets: dict[int, _WidgetDict] = {}
         self._processChanges = True
 
         layout = QtWidgets.QFormLayout()
-        self.confirm = QtWidgets.QPushButton('set')
+        self.confirm = QtWidgets.QPushButton("set")
         layout.addRow(self.confirm)
         self.setLayout(layout)
 
@@ -84,16 +89,16 @@ class ShapeSpecificationWidget(QtWidgets.QWidget):
         dimLenWidget.setMinimum(1)
         dimLenWidget.setMaximum(999999)
         self._widgets[idx] = {
-            'name': nameWidget,
-            'shape': dimLenWidget,
+            "name": nameWidget,
+            "shape": dimLenWidget,
         }
-        cast(QtWidgets.QFormLayout, self.layout()).insertRow(idx, nameWidget, dimLenWidget)
-
-        nameWidget.currentTextChanged.connect(
-            lambda x: self._processAxisChange(idx, x)
+        cast(QtWidgets.QFormLayout, self.layout()).insertRow(
+            idx, nameWidget, dimLenWidget
         )
 
-    def setAxes(self, axes: List[str]) -> None:
+        nameWidget.currentTextChanged.connect(lambda x: self._processAxisChange(idx, x))
+
+    def setAxes(self, axes: list[str]) -> None:
         """Specify a set of axis dimensions
 
         If the axes do not match the previous ones, delete all
@@ -103,8 +108,8 @@ class ShapeSpecificationWidget(QtWidgets.QWidget):
             self._axes = axes
             layout = cast(QtWidgets.QFormLayout, self.layout())
             for i in range(layout.rowCount() - 1):
-                self._widgets[i]['name'].deleteLater()
-                self._widgets[i]['shape'].deleteLater()
+                self._widgets[i]["name"].deleteLater()
+                self._widgets[i]["shape"].deleteLater()
                 layout.removeRow(0)
 
             self._widgets = {}
@@ -112,18 +117,19 @@ class ShapeSpecificationWidget(QtWidgets.QWidget):
             for i, ax in enumerate(axes):
                 self._addAxis(i, ax)
 
-    def _unusedAxes(self) -> List[str]:
+    def _unusedAxes(self) -> list[str]:
         names = self._axes.copy()
         for k, v in self._widgets.items():
-            ax = v['name'].currentText()
+            ax = v["name"].currentText()
             if ax in names:
                 del names[names.index(ax)]
         return names
 
-    def _axisIndexFromName(self, name: str,
-                           excludeIdxs: Sequence[int] = ()) -> Optional[int]:
+    def _axisIndexFromName(
+        self, name: str, excludeIdxs: Sequence[int] = ()
+    ) -> int | None:
         for k, v in self._widgets.items():
-            if k not in excludeIdxs and v['name'].currentText() == name:
+            if k not in excludeIdxs and v["name"].currentText() == name:
                 return k
         return None
 
@@ -135,22 +141,22 @@ class ShapeSpecificationWidget(QtWidgets.QWidget):
         unused = self._unusedAxes()
         if prevIdx is not None and len(unused) > 0:
             self._processChanges = False
-            self._widgets[prevIdx]['name'].setCurrentText(unused[0])
+            self._widgets[prevIdx]["name"].setCurrentText(unused[0])
             self._processChanges = True
 
     def setShape(self, shape: SpecShapeType) -> None:
-        """ Set the shape, will be reflected in the values set in the widgets.
+        """Set the shape, will be reflected in the values set in the widgets.
 
         :param shape: A dictionary with keys `order` and `shape`. The value
             of `order` must be a tuple with the axes names, ordered as desired.
             The value of `shape` is a tuple with the size of each axis
             dimension, in the order given by `order`.
         """
-        if 'order' in shape and 'shape' in shape:
+        if "order" in shape and "shape" in shape:
             self._processChanges = False
-            for i, (o, s) in enumerate(zip(shape['order'], shape['shape'])):
-                self._widgets[i]['name'].setCurrentText(o)
-                self._widgets[i]['shape'].setValue(s)
+            for i, (o, s) in enumerate(zip(shape["order"], shape["shape"])):
+                self._widgets[i]["name"].setCurrentText(o)
+                self._widgets[i]["shape"].setValue(s)
             self._processChanges = True
 
     def getShape(self) -> SpecShapeType:
@@ -164,15 +170,15 @@ class ShapeSpecificationWidget(QtWidgets.QWidget):
         order = []
         shape = []
         for k, v in self._widgets.items():
-            order.append(v['name'].currentText())
-            shape.append(v['shape'].value())
+            order.append(v["name"].currentText())
+            shape.append(v["shape"].value())
 
-        return {'order': tuple(order), 'shape': tuple(shape)}
+        return {"order": tuple(order), "shape": tuple(shape)}
 
     def enableEditing(self, enable: bool) -> None:
         for ax, widgets in self._widgets.items():
-            widgets['name'].setEnabled(enable)
-            widgets['shape'].setEnabled(enable)
+            widgets["name"].setEnabled(enable)
+            widgets["shape"].setEnabled(enable)
         self.confirm.setEnabled(enable)
 
 
@@ -181,18 +187,19 @@ class GridOptionWidget(QtWidgets.QWidget):
 
     optionSelected = Signal(object)
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
 
         self._emitUpdate = True
 
         #  make radio buttons and layout
         self.buttons = {
-            GridOption.noGrid: QtWidgets.QRadioButton('No grid'),
-            GridOption.guessShape: QtWidgets.QRadioButton('Guess shape'),
-            GridOption.specifyShape: QtWidgets.QRadioButton('Specify shape'),
+            GridOption.noGrid: QtWidgets.QRadioButton("No grid"),
+            GridOption.guessShape: QtWidgets.QRadioButton("Guess shape"),
+            GridOption.specifyShape: QtWidgets.QRadioButton("Specify shape"),
             GridOption.metadataShape: QtWidgets.QRadioButton(
-                'Read shape from metadata'),
+                "Read shape from metadata"
+            ),
         }
 
         btnLayout = QtWidgets.QVBoxLayout()
@@ -225,7 +232,7 @@ class GridOptionWidget(QtWidgets.QWidget):
         self.buttons[GridOption.noGrid].setChecked(True)
         self.enableShapeEdit(False)
 
-    def getGrid(self) -> Tuple[GridOption, Optional[SpecShapeType]]:
+    def getGrid(self) -> tuple[GridOption, SpecShapeType | None]:
         """Get grid option from the current widget selections
 
         :returns: the grid specification, and the options that go with it.
@@ -235,14 +242,14 @@ class GridOptionWidget(QtWidgets.QWidget):
         """
         activeBtn = self.btnGroup.checkedButton()
         activeId = self.btnGroup.id(activeBtn)
-        opts: Optional[SpecShapeType] = None
+        opts: SpecShapeType | None = None
 
         if GridOption(activeId) == GridOption.specifyShape:
             opts = self.shapeSpec.getShape()
 
         return GridOption(activeId), opts
 
-    def setGrid(self, grid: Tuple[GridOption, Dict[str, Any]]) -> None:
+    def setGrid(self, grid: tuple[GridOption, dict[str, Any]]) -> None:
         """Set the grid specification in the UI.
 
         :param grid: Tuple of the :class:`GridOption` and additional options.
@@ -286,10 +293,10 @@ class GridOptionWidget(QtWidgets.QWidget):
     def shapeSpecified(self) -> None:
         self.signalGridOption(self.getGrid())
 
-    def signalGridOption(self, grid: Tuple[GridOption, Optional[SpecShapeType]]) -> None:
+    def signalGridOption(self, grid: tuple[GridOption, SpecShapeType | None]) -> None:
         self.optionSelected.emit(grid)
 
-    def setAxes(self, axes: List[str]) -> None:
+    def setAxes(self, axes: list[str]) -> None:
         """Set the available axis dimensions."""
         self.shapeSpec.setAxes(axes)
         if self.getGrid()[0] == GridOption.specifyShape:
@@ -309,36 +316,34 @@ class GridOptionWidget(QtWidgets.QWidget):
 class DataGridderNodeWidget(NodeWidget):
     """Node widget for :class:`DataGridderNode`."""
 
-    def __init__(self, node: Optional[Node] = None):
+    def __init__(self, node: Node | None = None):
         self.icon = get_gridIcon()
         super().__init__(embedWidgetClass=GridOptionWidget)
 
         self.optSetters = {
-            'grid': self.setGrid,
+            "grid": self.setGrid,
         }
         self.optGetters = {
-            'grid': self.getGrid,
+            "grid": self.getGrid,
         }
         assert self.widget is not None
-        self.widget.optionSelected.connect(
-            lambda x: self.signalOption('grid')
-        )
+        self.widget.optionSelected.connect(lambda x: self.signalOption("grid"))
 
-    def getGrid(self) -> Tuple[GridOption, Dict[str, Any]]:
+    def getGrid(self) -> tuple[GridOption, dict[str, Any]]:
         assert self.widget is not None
         return self.widget.getGrid()
 
-    def setGrid(self, grid: Tuple[GridOption, Dict[str, Any]]) -> None:
+    def setGrid(self, grid: tuple[GridOption, dict[str, Any]]) -> None:
         assert self.widget is not None
         self.widget.setGrid(grid)
 
     @updateGuiFromNode
-    def setAxes(self, axes: List[str]) -> None:
+    def setAxes(self, axes: list[str]) -> None:
         assert self.widget is not None
         self.widget.setAxes(axes)
 
     @updateGuiFromNode
-    def setShape(self, shape: Dict[str, Tuple[int, ...]]) -> None:
+    def setShape(self, shape: dict[str, tuple[int, ...]]) -> None:
         assert self.widget is not None
         self.widget.setShape(shape)
 
@@ -359,8 +364,7 @@ class DataGridder(Node[DataGridderNodeWidget]):
     axesList = Signal(list)
 
     def __init__(self, name: str):
-
-        self._grid: Tuple[GridOption, Dict[str, Any]] = (GridOption.noGrid, {})
+        self._grid: tuple[GridOption, dict[str, Any]] = (GridOption.noGrid, {})
         self._shape = None
         self._invalid = False
 
@@ -369,7 +373,7 @@ class DataGridder(Node[DataGridderNodeWidget]):
     # Properties
 
     @property
-    def grid(self) -> Tuple[GridOption, Dict[str, Any]]:
+    def grid(self) -> tuple[GridOption, dict[str, Any]]:
         """Specification for how to grid the data. Consists of a main option
         and (optional) additional options.
 
@@ -421,18 +425,18 @@ class DataGridder(Node[DataGridderNodeWidget]):
         return self._grid
 
     @grid.setter
-    @updateOption('grid')
-    def grid(self, val: Tuple[GridOption, Optional[Dict[str, Any]]]) -> None:
+    @updateOption("grid")
+    def grid(self, val: tuple[GridOption, dict[str, Any] | None]) -> None:
         """set the grid option. does some elementary type checking, but should
         probably be refined a bit."""
 
         try:
             method, opts = val
         except TypeError:
-            raise ValueError(f"Invalid grid specification.")
+            raise ValueError("Invalid grid specification.")
 
         if method not in GridOption:
-            raise ValueError(f"Invalid grid method specification.")
+            raise ValueError("Invalid grid method specification.")
         if opts is None:
             opts = {}
 
@@ -444,17 +448,15 @@ class DataGridder(Node[DataGridderNodeWidget]):
     # Processing
 
     def validateOptions(self, data: Any) -> bool:
-        """Currently, does not perform checks beyond those of the parent class.
-        """
+        """Currently, does not perform checks beyond those of the parent class."""
         if not super().validateOptions(data):
             return False
 
         return True
 
     def process(
-            self,
-            dataIn: Optional[DataDictBase] = None
-    ) -> Optional[Dict[str, Optional[DataDictBase]]]:
+        self, dataIn: DataDictBase | None = None
+    ) -> dict[str, DataDictBase | None] | None:
         """Process the data."""
 
         # TODO: what would be nice is to change the correct inner axis order
@@ -468,14 +470,14 @@ class DataGridder(Node[DataGridderNodeWidget]):
         data = super().process(dataIn=dataIn)
         if data is None:
             return None
-        dataout = data['dataOut']
+        dataout = data["dataOut"]
         assert dataout is not None
         data = dataout.copy()
         self.axesList.emit(data.axes())
 
-        dout: Optional[DataDictBase] = None
+        dout: DataDictBase | None = None
         method, opts = self._grid
-        order = opts.get('order', data.axes())
+        order = opts.get("order", data.axes())
 
         if isinstance(data, DataDict):
             try:
@@ -485,27 +487,27 @@ class DataGridder(Node[DataGridderNodeWidget]):
                     dout = dd.datadict_to_meshgrid(data)
                 elif method is GridOption.specifyShape:
                     dout = dd.datadict_to_meshgrid(
-                        data, target_shape=opts['shape'],
+                        data,
+                        target_shape=opts["shape"],
                         inner_axis_order=order,
                     )
                 elif method is GridOption.metadataShape:
                     try:
-                        dout = dd.datadict_to_meshgrid(
-                            data, use_existing_shape=True
-                        )
+                        dout = dd.datadict_to_meshgrid(data, use_existing_shape=True)
                     except ValueError as err:
                         if "Malformed data" in str(err):
                             self.node_logger.warning(
                                 "Shape/Setpoint order does"
                                 " not match data. Falling back to guessing shape"
-                                )
+                            )
                             dout = dd.datadict_to_meshgrid(data)
                         else:
                             raise err
             except GriddingError:
                 dout = data.expand()
-                self.node_logger.info("data could not be gridded. Falling back "
-                                   "to no grid")
+                self.node_logger.info(
+                    "data could not be gridded. Falling back " "to no grid"
+                )
                 if self.ui is not None:
                     self.ui.setGrid((GridOption.noGrid, {}))
         elif isinstance(data, MeshgridDataDict):
@@ -514,26 +516,22 @@ class DataGridder(Node[DataGridderNodeWidget]):
             elif method is GridOption.guessShape:
                 dout = data
             elif method is GridOption.specifyShape:
-                self.node_logger.warning(
-                    f"Data is already on grid. Ignore shape.")
+                self.node_logger.warning("Data is already on grid. Ignore shape.")
                 dout = data
             elif method is GridOption.metadataShape:
-                self.node_logger.warning(
-                    f"Data is already on grid. Ignore shape.")
+                self.node_logger.warning("Data is already on grid. Ignore shape.")
                 dout = data
 
         else:
-            self.node_logger.error(
-                f"Unknown data type {type(data)}.")
+            self.node_logger.error(f"Unknown data type {type(data)}.")
             return None
 
         if dout is None:
             return None
 
-        if hasattr(dout, 'shape'):
+        if hasattr(dout, "shape"):
             assert isinstance(dout, MeshgridDataDict)
-            self.shapeDetermined.emit({'order': order,
-                                       'shape': dout.shape()})
+            self.shapeDetermined.emit({"order": order, "shape": dout.shape()})
 
         return dict(dataOut=dout)
 

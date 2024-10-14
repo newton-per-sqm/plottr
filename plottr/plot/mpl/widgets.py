@@ -3,20 +3,18 @@
 """
 
 import io
-from typing import Tuple, Optional, List, Dict
 
-from numpy import rint
 from matplotlib import rcParams
 from matplotlib.axes import Axes
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavBar
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import (
-    FigureCanvasQTAgg as FCanvas,
-    NavigationToolbar2QT as NavBar,
-)
 
-from plottr import QtWidgets, QtGui, QtCore, config as plottrconfig
+from plottr import QtCore, QtGui, QtWidgets
+from plottr import config as plottrconfig
 from plottr.data.datadict import DataDictBase
-from plottr.gui.tools import widgetDialog, dpiScalingFactor
+from plottr.gui.tools import dpiScalingFactor, widgetDialog
+
 from ..base import PlotWidget, PlotWidgetContainer
 
 
@@ -29,9 +27,14 @@ class MPLPlot(FCanvas):
     It can be used as any QT widget.
     """
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None,
-                 width: float = 4.0, height: float = 3.0, dpi: int = 150,
-                 constrainedLayout: bool = True):
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        width: float = 4.0,
+        height: float = 3.0,
+        dpi: int = 150,
+        constrainedLayout: bool = True,
+    ):
         """
         Create the canvas.
 
@@ -42,16 +45,17 @@ class MPLPlot(FCanvas):
         :param constrainedLayout:
         """
 
-        self.fig = Figure(figsize=(width, height), dpi=dpi,
-                          constrained_layout=constrainedLayout)
+        self.fig = Figure(
+            figsize=(width, height), dpi=dpi, constrained_layout=constrainedLayout
+        )
         super().__init__(self.fig)
 
-        self.axes: List[Axes] = []
+        self.axes: list[Axes] = []
         self._tightLayout = False
         self._showInfo = False
         self._infoArtist = None
-        self._info = ''
-        self._meta_info: Dict[str, str] = {}
+        self._info = ""
+        self._meta_info: dict[str, str] = {}
         self._constrainedLayout = constrainedLayout
 
         self.clearFig()
@@ -61,9 +65,9 @@ class MPLPlot(FCanvas):
     def autosize(self) -> None:
         """Sets some default spacings/margins."""
         if not self._constrainedLayout:
-            self.fig.subplots_adjust(left=0.125, bottom=0.125,
-                                     top=0.9, right=0.875,
-                                     wspace=0.35, hspace=0.2)
+            self.fig.subplots_adjust(
+                left=0.125, bottom=0.125, top=0.9, right=0.875, wspace=0.35, hspace=0.2
+            )
         self.draw()
 
     def clearFig(self) -> None:
@@ -73,10 +77,10 @@ class MPLPlot(FCanvas):
 
     def setRcParams(self) -> None:
         """apply matplotlibrc config from plottr configuration files."""
-        cfg = plottrconfig().get('main', {}).get('matplotlibrc', {})
+        cfg = plottrconfig().get("main", {}).get("matplotlibrc", {})
         for k, v in cfg.items():
             rcParams[k] = v
-        rcParams['font.size'] = cfg.get('font.size', 6) * dpiScalingFactor(self)
+        rcParams["font.size"] = cfg.get("font.size", 6) * dpiScalingFactor(self)
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         """
@@ -98,10 +102,14 @@ class MPLPlot(FCanvas):
 
         if self._showInfo:
             self._infoArtist = self.fig.text(
-                0.02, 0.9, self._info,
-                fontsize='small',
-                verticalalignment='top',
-                bbox=dict(boxstyle='round', facecolor='white', alpha=0.67, lw=1, ec='k')
+                0.02,
+                0.9,
+                self._info,
+                fontsize="small",
+                verticalalignment="top",
+                bbox=dict(
+                    boxstyle="round", facecolor="white", alpha=0.67, lw=1, ec="k"
+                ),
             )
         self.draw()
 
@@ -110,8 +118,7 @@ class MPLPlot(FCanvas):
         Copy the current canvas to the clipboard.
         """
         buf = io.BytesIO()
-        self.fig.savefig(buf, dpi=300, facecolor='w', format='png',
-                         transparent=True)
+        self.fig.savefig(buf, dpi=300, facecolor="w", format="png", transparent=True)
 
         clipboard = QtWidgets.QApplication.clipboard()
         clipboard.setImage(QtGui.QImage.fromData(buf.getvalue()))
@@ -119,16 +126,17 @@ class MPLPlot(FCanvas):
 
     def metaToClipboard(self) -> None:
         clipboard = QtWidgets.QApplication.clipboard()
-        meta_info_string = "\n".join(f"{k}: {v}"
-                                     for k, v in self._meta_info.items())
+        meta_info_string = "\n".join(f"{k}: {v}" for k, v in self._meta_info.items())
         clipboard.setText(meta_info_string)
 
     def setFigureTitle(self, title: str) -> None:
         """Add a title to the figure."""
-        self.fig.suptitle(title,
-                          horizontalalignment='center',
-                          verticalalignment='top',
-                          fontsize='small')
+        self.fig.suptitle(
+            title,
+            horizontalalignment="center",
+            verticalalignment="top",
+            fontsize="small",
+        )
         self.draw()
 
     def setFigureInfo(self, info: str) -> None:
@@ -136,7 +144,7 @@ class MPLPlot(FCanvas):
         self._info = info
         self.updateInfo()
 
-    def setMetaInfo(self, meta_info: Dict[str, str]) -> None:
+    def setMetaInfo(self, meta_info: dict[str, str]) -> None:
         self._meta_info = meta_info
 
 
@@ -146,7 +154,7 @@ class MPLPlotWidget(PlotWidget):
     Per default, add a canvas and the matplotlib NavBar.
     """
 
-    def __init__(self, parent: Optional[PlotWidgetContainer] = None):
+    def __init__(self, parent: PlotWidgetContainer | None = None):
         super().__init__(parent=parent)
 
         #: the plot widget
@@ -170,11 +178,11 @@ class MPLPlotWidget(PlotWidget):
             if meta field ``title`` or ``info`` are in the data object, then
             they will be added as text info to the figure.
         """
-        if data.has_meta('title'):
-            self.plot.setFigureTitle(data.meta_val('title'))
+        if data.has_meta("title"):
+            self.plot.setFigureTitle(data.meta_val("title"))
 
-        if data.has_meta('info'):
-            self.plot.setFigureInfo(data.meta_val('info'))
+        if data.has_meta("info"):
+            self.plot.setFigureInfo(data.meta_val("info"))
 
         all_meta = {}
         for k, v in sorted(data.meta_items()):
@@ -188,20 +196,19 @@ class MPLPlotWidget(PlotWidget):
         """Add options for displaying ``info`` meta data and copying the figure to the clipboard to the
         plot toolbar."""
         self.mplBar.addSeparator()
-        infoAction = self.mplBar.addAction('Show Info')
+        infoAction = self.mplBar.addAction("Show Info")
         infoAction.setCheckable(True)
         infoAction.toggled.connect(self.plot.setShowInfo)
 
         self.mplBar.addSeparator()
-        self.mplBar.addAction('Copy Figure', self.plot.toClipboard)
-        self.mplBar.addAction('Copy Meta', self.plot.metaToClipboard)
+        self.mplBar.addAction("Copy Figure", self.plot.toClipboard)
+        self.mplBar.addAction("Copy Meta", self.plot.metaToClipboard)
 
 
-def figureDialog() -> Tuple[Figure, QtWidgets.QDialog]:
+def figureDialog() -> tuple[Figure, QtWidgets.QDialog]:
     """Make a dialog window containing a :class:`.MPLPlotWidget`.
 
     :return: The figure object of the plot, and the dialog window object.
     """
     widget = MPLPlotWidget()
     return widget.plot.fig, widgetDialog(widget)
-

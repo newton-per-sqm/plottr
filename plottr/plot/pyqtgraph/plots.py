@@ -1,14 +1,12 @@
 """Convenience tools for generating ``pyqtgraph`` plots that can
 be used in plottr's automatic plotting framework."""
 
-from typing import Optional, Tuple, NoReturn
-
 import numpy as np
 import pyqtgraph as pg
 
 from plottr import QtCore, QtWidgets, config_entry
 
-__all__ = ['PlotBase', 'Plot']
+__all__ = ["PlotBase", "Plot"]
 
 
 class PlotBase(QtWidgets.QWidget):
@@ -21,7 +19,7 @@ class PlotBase(QtWidgets.QWidget):
     This base class should be inherited to use.
     """
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
         #: central layout of the widget. only contains a graphics layout.
@@ -48,10 +46,11 @@ class PlotBase(QtWidgets.QWidget):
 class Plot(PlotBase):
     """A simple plot with a single ``PlotItem``."""
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
-        legend = self.plot.addLegend(offset=(5, 5), pen='#999',
-                                     brush=(255, 255, 255, 150))
+        legend = self.plot.addLegend(
+            offset=(5, 5), pen="#999", brush=(255, 255, 255, 150)
+        )
         legend.layout.setContentsMargins(0, 0, 0, 0)
         self.plot.showGrid(True, True)
 
@@ -67,25 +66,27 @@ class PlotWithColorbar(PlotBase):
     scatter plot (:meth:`.setScatter2D`).
     The color scale is displayed in an interactive colorbar.
     """
+
     #: colorbar
     colorbar: pg.ColorBarItem
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
-        cmap_name = config_entry('main', 'pyqtgraph', 'default_colormap')
+        cmap_name = config_entry("main", "pyqtgraph", "default_colormap")
         try:
             cmap = pg.colormap.get(cmap_name)
         except:
-            cmap = pg.colormap.get('CET-L1')
+            cmap = pg.colormap.get("CET-L1")
 
-        self.colorbar: pg.ColorBarItem = pg.ColorBarItem(interactive=True, values=(0, 1),
-                                                         colorMap=cmap, width=15)
+        self.colorbar: pg.ColorBarItem = pg.ColorBarItem(
+            interactive=True, values=(0, 1), colorMap=cmap, width=15
+        )
         self.graphicsLayout.addItem(self.colorbar)
 
-        self.img: Optional[pg.ImageItem] = None
-        self.scatter: Optional[pg.ScatterPlotItem] = None
-        self.scatterZVals: Optional[np.ndarray] = None
+        self.img: pg.ImageItem | None = None
+        self.scatter: pg.ScatterPlotItem | None = None
+        self.scatterZVals: np.ndarray | None = None
 
     def clearPlot(self) -> None:
         """Clear the content of the plot."""
@@ -114,7 +115,9 @@ class PlotWithColorbar(PlotBase):
         self.img = pg.ImageItem()
         self.plot.addItem(self.img)
         self.img.setImage(z)
-        self.img.setRect(QtCore.QRectF(x.min(), y.min(), x.max() - x.min(), y.max() - y.min()))
+        self.img.setRect(
+            QtCore.QRectF(x.min(), y.min(), x.max() - x.min(), y.max() - y.min())
+        )
 
         self.colorbar.setImageItem(self.img)
         self.colorbar.rounding = (z.max() - z.min()) * 1e-2
@@ -134,7 +137,7 @@ class PlotWithColorbar(PlotBase):
         self.clearPlot()
 
         self.scatter = pg.ScatterPlotItem()
-        self.scatter.setData(x=x.flatten(), y=y.flatten(), symbol='o', size=8)
+        self.scatter.setData(x=x.flatten(), y=y.flatten(), symbol="o", size=8)
         self.plot.addItem(self.scatter)
         self.scatterZVals = z.flatten()
 
@@ -151,7 +154,9 @@ class PlotWithColorbar(PlotBase):
             colors = self.colorbar.cmap.mapToQColor(z_norm)
             self.scatter.setBrush(colors)
 
-    def _normalizeColors(self, z: np.ndarray, levels: Tuple[float, float]) -> np.ndarray:
+    def _normalizeColors(
+        self, z: np.ndarray, levels: tuple[float, float]
+    ) -> np.ndarray:
         scale = levels[1] - levels[0]
         if scale > 0:
             return (z - levels[0]) / scale

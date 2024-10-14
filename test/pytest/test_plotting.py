@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+
 from plottr.plot.mpl.plotting import PlotType, colorplot2d
 
 

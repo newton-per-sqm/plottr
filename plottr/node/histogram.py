@@ -9,28 +9,30 @@ This module contains the following classes:
   of the user options for the node.
 """
 
-from typing import Union, Optional, Dict, List, Type
-
 import numpy as np
 from xhistogram.core import histogram
 
 from plottr import QtWidgets
-from ..gui.widgets import FormLayoutWrapper, DimensionCombo
+
 from ..data.datadict import DataDictBase, MeshgridDataDict
+from ..gui.widgets import DimensionCombo, FormLayoutWrapper
 from .node import Node, NodeWidget, updateOption
 
 
 class _HistogramOptionsWidget(FormLayoutWrapper):
     """Form widget providing a combo box for histogramming axis selection and an
     integer spin box for number of bins."""
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(
             parent=parent,
-            elements=[('Hist. axis', DimensionCombo(dimensionType='axes')),
-                      ('# of bins', QtWidgets.QSpinBox())],
+            elements=[
+                ("Hist. axis", DimensionCombo(dimensionType="axes")),
+                ("# of bins", QtWidgets.QSpinBox()),
+            ],
         )
-        self.combo = self.elements['Hist. axis']
-        self.nbins = self.elements['# of bins']
+        self.combo = self.elements["Hist. axis"]
+        self.nbins = self.elements["# of bins"]
         self.nbins.setRange(3, 10000)
 
 
@@ -48,29 +50,28 @@ class HistogrammerWidget(NodeWidget):
         self.setAxis(node.histogramAxis)
 
         self.optSetters = {
-            'histogramAxis': self.setAxis,
-            'nbins': self.widget.nbins.setValue,
+            "histogramAxis": self.setAxis,
+            "nbins": self.widget.nbins.setValue,
         }
         self.optGetters = {
-            'histogramAxis': self.getAxis,
-            'nbins': self.widget.nbins.value,
+            "histogramAxis": self.getAxis,
+            "nbins": self.widget.nbins.value,
         }
 
         self.widget.combo.dimensionSelected.connect(
-            lambda x: self.signalOption('histogramAxis'))
-        self.widget.nbins.editingFinished.connect(
-            lambda: self.signalOption('nbins'))
+            lambda x: self.signalOption("histogramAxis")
+        )
+        self.widget.nbins.editingFinished.connect(lambda: self.signalOption("nbins"))
 
-
-    def getAxis(self) -> Optional[str]:
+    def getAxis(self) -> str | None:
         t = self.widget.combo.currentText()
-        if t == 'None':
+        if t == "None":
             t = None
         return t
 
-    def setAxis(self, value: Optional[str]) -> None:
+    def setAxis(self, value: str | None) -> None:
         if value is None:
-            value = 'None'
+            value = "None"
         self.widget.combo.setCurrentText(value)
 
 
@@ -93,11 +94,11 @@ class Histogrammer(Node):
     """
 
     useUi = True
-    uiClass: Type["NodeWidget"] = HistogrammerWidget
+    uiClass: type["NodeWidget"] = HistogrammerWidget
 
     def __init__(self, name: str) -> None:
         self._nbins: int = 51
-        self._histogramAxis: Optional[str] = None
+        self._histogramAxis: str | None = None
 
         super().__init__(name)
 
@@ -106,17 +107,17 @@ class Histogrammer(Node):
         return self._nbins
 
     @nbins.setter
-    @updateOption('nbins')
+    @updateOption("nbins")
     def nbins(self, value: int) -> None:
         self._nbins = value
 
     @property
-    def histogramAxis(self) -> Optional[str]:
+    def histogramAxis(self) -> str | None:
         return self._histogramAxis
 
     @histogramAxis.setter
-    @updateOption('histogramAxis')
-    def histogramAxis(self, value: Optional[str]) -> None:
+    @updateOption("histogramAxis")
+    def histogramAxis(self, value: str | None) -> None:
         self._histogramAxis = value
 
     def validateOptions(self, data: DataDictBase) -> bool:
@@ -129,12 +130,13 @@ class Histogrammer(Node):
             return False
         return True
 
-    def process(self, dataIn: Optional[DataDictBase]=None) \
-            -> Optional[Dict[str, Optional[DataDictBase]]]:
+    def process(
+        self, dataIn: DataDictBase | None = None
+    ) -> dict[str, DataDictBase | None] | None:
         data = super().process(dataIn=dataIn)
         if data is None:
             return None
-        data = data['dataOut']
+        data = data["dataOut"]
         assert data is not None
         data = data.mask_invalid()
 
@@ -147,7 +149,7 @@ class Histogrammer(Node):
         else:
             dataIsOnGrid = False
 
-        hAxisIdx: Optional[int] = None
+        hAxisIdx: int | None = None
         for depName in data.dependents():
             if dataIsOnGrid:
                 axes = data.axes(depName)
@@ -157,46 +159,46 @@ class Histogrammer(Node):
                 axes = []
 
             dvals = data.data_vals(depName)
-            bins: Union[np.ndarray, List[np.ndarray]]
+            bins: np.ndarray | list[np.ndarray]
             if not np.iscomplexobj(dvals):
                 d = [dvals]
                 dataIsComplex = False
-                bins = np.linspace(dvals.min(), dvals.max(), self.nbins+1)
+                bins = np.linspace(dvals.min(), dvals.max(), self.nbins + 1)
             else:
                 d = [dvals.imag, dvals.real]
                 dataIsComplex = True
                 bins = [
-                    np.linspace(dvals.imag.min(), dvals.imag.max(), self.nbins+1),
-                    np.linspace(dvals.real.min(), dvals.real.max(), self.nbins+1),
+                    np.linspace(dvals.imag.min(), dvals.imag.max(), self.nbins + 1),
+                    np.linspace(dvals.real.min(), dvals.real.max(), self.nbins + 1),
                 ]
             hist, edges = histogram(*d, axis=hAxisIdx, bins=bins)
 
-            newDepName = depName+'_count'
+            newDepName = depName + "_count"
             if dataIsComplex:
-                newAxNames = [f'Im[{depName}]', f'Re[{depName}]']
-                newAxUnits = 2*[data[depName]['unit']]
-                realAxVals = np.outer(np.ones_like(edges[0][:-1]),
-                                      edges[1][:-1] + (edges[1][1:] - edges[1][:-1])).flatten()
-                imagAxVals = np.outer(edges[0][:-1] + (edges[0][1:] - edges[0][:-1]),
-                                      np.ones_like(edges[1][:-1])).flatten()
+                newAxNames = [f"Im[{depName}]", f"Re[{depName}]"]
+                newAxUnits = 2 * [data[depName]["unit"]]
+                realAxVals = np.outer(
+                    np.ones_like(edges[0][:-1]),
+                    edges[1][:-1] + (edges[1][1:] - edges[1][:-1]),
+                ).flatten()
+                imagAxVals = np.outer(
+                    edges[0][:-1] + (edges[0][1:] - edges[0][:-1]),
+                    np.ones_like(edges[1][:-1]),
+                ).flatten()
                 axVals = [imagAxVals, realAxVals]
             else:
                 newAxNames = [depName]
-                newAxUnits = [data[depName]['unit']]
+                newAxUnits = [data[depName]["unit"]]
                 axVals = [edges[0][:-1] + (edges[0][1:] - edges[0][:-1])]
 
-            newData[newDepName] = dict(
-                values=hist,
-                axes=axes+newAxNames
-            )
+            newData[newDepName] = dict(values=hist, axes=axes + newAxNames)
 
             # expand onto grid and add to dataset
             for an, au, av in zip(newAxNames, newAxUnits, axVals):
                 newData[an] = dict(
-                    values=np.outer(
-                        np.ones(int(hist.size//av.size)),
-                        av
-                    ).reshape(*hist.shape),
+                    values=np.outer(np.ones(int(hist.size // av.size)), av).reshape(
+                        *hist.shape
+                    ),
                     unit=au,
                 )
 
@@ -206,13 +208,12 @@ class Histogrammer(Node):
                 # fill up to match the added histogram dimensions
                 oldAxData = data.data_vals(ax).mean(axis=hAxisIdx)
                 axData = np.outer(
-                    oldAxData, np.ones(hist.size//oldAxData.size)
+                    oldAxData, np.ones(hist.size // oldAxData.size)
                 ).reshape(*hist.shape)
                 newData[ax] = data[ax]
-                newData[ax]['values'] = axData
+                newData[ax]["values"] = axData
 
         if newData.validate():
             return dict(dataOut=newData)
 
         return None
-

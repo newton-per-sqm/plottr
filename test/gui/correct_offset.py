@@ -7,33 +7,27 @@ from plottr.node.filter.correct_offset import SubtractAverage
 
 
 def subtractAverage():
-    x = np.arange(11) - 5.
+    x = np.arange(11) - 5.0
     y = np.linspace(0, 10, 51)
-    xx, yy = np.meshgrid(x, y, indexing='ij')
+    xx, yy = np.meshgrid(x, y, indexing="ij")
     zz = np.sin(yy) + xx
     data = MeshgridDataDict(
-        x=dict(values=xx),
-        y=dict(values=yy),
-        z=dict(values=zz, axes=['x', 'y'])
+        x=dict(values=xx), y=dict(values=yy), z=dict(values=zz, axes=["x", "y"])
     )
     data.validate()
 
-    x = np.arange(11) - 5.
+    x = np.arange(11) - 5.0
     y = np.linspace(0, 10, 51)
-    xx, yy = np.meshgrid(x, y, indexing='ij')
+    xx, yy = np.meshgrid(x, y, indexing="ij")
     zz = np.sin(yy) + xx
     data2 = MeshgridDataDict(
-        reps=dict(values=xx),
-        y=dict(values=yy),
-        z=dict(values=zz, axes=['reps', 'y'])
+        reps=dict(values=xx), y=dict(values=yy), z=dict(values=zz, axes=["reps", "y"])
     )
     data2.validate()
 
     # make app and gui, fc
     app = QtWidgets.QApplication([])
-    win, fc = makeFlowchartWithPlotWindow([
-        ('sub', SubtractAverage)
-    ])
+    win, fc = makeFlowchartWithPlotWindow([("sub", SubtractAverage)])
     win.show()
 
     # feed in data
@@ -43,5 +37,5 @@ def subtractAverage():
     return app.exec_()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     subtractAverage()

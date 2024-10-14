@@ -20,18 +20,16 @@ Readout settings can be changed through module-level variables:
 
 """
 
-from typing import Union
 import numpy as np
 
-
-angle = np.pi/2
-amp = 2.
+angle = np.pi / 2
+amp = 2.0
 noise = 0.5
 
 
-def gs_probability(theta: Union[np.ndarray, float]) -> Union[np.ndarray, float]:
+def gs_probability(theta: np.ndarray | float) -> np.ndarray | float:
     """Compute ground state probability for given rotation angle."""
-    return np.cos(theta/2.)**2.
+    return np.cos(theta / 2.0) ** 2.0
 
 
 def state_data(state: np.ndarray) -> np.ndarray:
@@ -40,8 +38,9 @@ def state_data(state: np.ndarray) -> np.ndarray:
     :param state: array of states (0 or 1, typically).
     :returns: array of complex readout results."""
     mean = amp * np.exp(1j * state * angle)
-    return np.random.normal(loc=mean.real, scale=noise, size=state.shape) + \
-        1j * np.random.normal(loc=mean.imag, scale=noise, size=state.shape)
+    return np.random.normal(
+        loc=mean.real, scale=noise, size=state.shape
+    ) + 1j * np.random.normal(loc=mean.imag, scale=noise, size=state.shape)
 
 
 def angle_data(theta: float, n: int = 100) -> np.ndarray:
@@ -55,18 +54,19 @@ def angle_data(theta: float, n: int = 100) -> np.ndarray:
     state = rng.choice(
         np.array([0, 1]),
         size=n,
-        p=np.array([gs_probability(theta), 1-gs_probability(theta)]),
+        p=np.array([gs_probability(theta), 1 - gs_probability(theta)]),
     )
     return state_data(state)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from matplotlib import pyplot as plt
 
-    data = angle_data(np.pi/2., n=1000)
+    data = angle_data(np.pi / 2.0, n=1000)
     extent = np.abs(data).max()
-    hist, xe, ye = np.histogram2d(data.real, data.imag,
-                                  bins=list(np.linspace(-extent, extent, 51)))
+    hist, xe, ye = np.histogram2d(
+        data.real, data.imag, bins=list(np.linspace(-extent, extent, 51))
+    )
     fig, ax = plt.subplots(1, 1)
     im = ax.pcolormesh(xe, ye, hist.T)
     cb = fig.colorbar(im)

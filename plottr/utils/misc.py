@@ -3,11 +3,12 @@
 Various utility functions.
 """
 
+from collections.abc import Sequence
 from enum import Enum
-from typing import List, Tuple, TypeVar, Optional, Sequence, Any
+from typing import Any, Optional, TypeVar
 
 
-def reorder_indices(lst: Sequence[str], target: Sequence[str]) -> Tuple[int, ...]:
+def reorder_indices(lst: Sequence[str], target: Sequence[str]) -> tuple[int, ...]:
     """
     Determine how to bring a list with unique entries to a different order.
 
@@ -18,12 +19,12 @@ def reorder_indices(lst: Sequence[str], target: Sequence[str]) -> Tuple[int, ...
     :return: the indices that will reorder the input to obtain the target.
     :raises: ``ValueError`` for invalid inputs.
     """
-    if set([type(i) for i in lst]) != {str}:
-        raise ValueError('Only lists of strings are supported')
+    if {type(i) for i in lst} != {str}:
+        raise ValueError("Only lists of strings are supported")
     if len(set(lst)) < len(lst):
-        raise ValueError('Input list elements are not unique.')
+        raise ValueError("Input list elements are not unique.")
     if set(lst) != set(target) or len(lst) != len(target):
-        raise ValueError('Contents of input and target do not match.')
+        raise ValueError("Contents of input and target do not match.")
 
     idxs = []
     for elt in target:
@@ -32,8 +33,7 @@ def reorder_indices(lst: Sequence[str], target: Sequence[str]) -> Tuple[int, ...
     return tuple(idxs)
 
 
-def reorder_indices_from_new_positions(lst: List[str], **pos: int) \
-        -> Tuple[int, ...]:
+def reorder_indices_from_new_positions(lst: list[str], **pos: int) -> tuple[int, ...]:
     """
     Determine how to bring a list with unique entries to a different order.
 
@@ -43,10 +43,10 @@ def reorder_indices_from_new_positions(lst: List[str], **pos: int) \
     :return: the indices that will reorder the input to obtain the target.
     :raises: ``ValueError`` for invalid inputs.
     """
-    if set([type(i) for i in lst]) != {str}:
-        raise ValueError('Only lists of strings are supported')
+    if {type(i) for i in lst} != {str}:
+        raise ValueError("Only lists of strings are supported")
     if len(set(lst)) < len(lst):
-        raise ValueError('Input list elements are not unique.')
+        raise ValueError("Input list elements are not unique.")
 
     target = lst.copy()
     for item, newidx in pos.items():
@@ -57,10 +57,10 @@ def reorder_indices_from_new_positions(lst: List[str], **pos: int) \
     return reorder_indices(lst, target)
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
-def unwrap_optional(val: Optional[T]) -> T:
+def unwrap_optional(val: T | None) -> T:
     """Covert a variable of type Optional[T] to T
     If the variable has value None a ValueError will be raised
     """

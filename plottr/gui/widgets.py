@@ -3,17 +3,20 @@ widgets.py
 
 Common GUI widgets that are re-used across plottr.
 """
-from typing import Union, List, Tuple, Optional, Sequence, Dict, Any, Type, Generic, TypeVar
 
-from .tools import dictToTreeWidgetItems, dpiScalingFactor
-from plottr import QtGui, QtCore, Flowchart, QtWidgets, Signal, Slot
-from plottr.node import Node, linearFlowchart, NodeWidget, updateOption
-from plottr.node.node import updateGuiQuietly, emitGuiUpdate
-from ..plot import PlotNode, PlotWidgetContainer, PlotWidget
+from collections.abc import Sequence
+from typing import Any, Generic, TypeVar
+
+from plottr import Flowchart, QtGui, QtWidgets, Signal, Slot
+from plottr.node import Node, linearFlowchart
+from plottr.node.node import emitGuiUpdate, updateGuiQuietly
+
 from .. import config_entry as getcfg
+from ..plot import PlotNode, PlotWidget, PlotWidgetContainer
+from .tools import dictToTreeWidgetItems, dpiScalingFactor
 
-__author__ = 'Wolfgang Pfaff'
-__license__ = 'MIT'
+__author__ = "Wolfgang Pfaff"
+__license__ = "MIT"
 
 ElementType = TypeVar("ElementType", bound=QtWidgets.QWidget)
 
@@ -26,11 +29,14 @@ class FormLayoutWrapper(QtWidgets.QWidget, Generic[ElementType]):
     Labels have to be unique.
     """
 
-    def __init__(self, elements: List[Tuple[str, ElementType]],
-                 parent: Union[None, QtWidgets.QWidget] = None):
+    def __init__(
+        self,
+        elements: list[tuple[str, ElementType]],
+        parent: None | QtWidgets.QWidget = None,
+    ):
         super().__init__(parent)
 
-        self.elements: Dict[str, ElementType] = {}
+        self.elements: dict[str, ElementType] = {}
 
         layout = QtWidgets.QFormLayout()
         for lbl, widget in elements:
@@ -51,7 +57,7 @@ class MonitorIntervalInput(QtWidgets.QWidget):
 
     intervalChanged = Signal(float)
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
 
         self.spin = QtWidgets.QDoubleSpinBox()
@@ -59,7 +65,7 @@ class MonitorIntervalInput(QtWidgets.QWidget):
         self.spin.setDecimals(1)
 
         layout = QtWidgets.QFormLayout()
-        layout.addRow('Refresh interval (s)', self.spin)
+        layout.addRow("Refresh interval (s)", self.spin)
         self.setLayout(layout)
 
         self.spin.valueChanged.connect(self.spinValueChanged)
@@ -78,10 +84,13 @@ class PlotWindow(QtWidgets.QMainWindow):
     #: Signal() -- emitted when the window is closed
     windowClosed = Signal()
 
-    def __init__(self, parent: Optional[QtWidgets.QMainWindow] = None,
-                 fc: Optional[Flowchart] = None,
-                 plotWidgetClass: Optional[Type[PlotWidget]] = None,
-                 **kw: Any):
+    def __init__(
+        self,
+        parent: QtWidgets.QMainWindow | None = None,
+        fc: Flowchart | None = None,
+        plotWidgetClass: type[PlotWidget] | None = None,
+        **kw: Any,
+    ):
         """
         Constructor for :class:`.PlotWindow`.
 
@@ -96,7 +105,7 @@ class PlotWindow(QtWidgets.QMainWindow):
         super().__init__(parent)
 
         if plotWidgetClass is None:
-            plotWidgetClass = getcfg('main', 'default-plotwidget')
+            plotWidgetClass = getcfg("main", "default-plotwidget")
 
         if plotWidgetClass is None:
             raise RuntimeError("No PlotWidget has been specified.")
@@ -104,19 +113,19 @@ class PlotWindow(QtWidgets.QMainWindow):
         self.plotWidgetClass = plotWidgetClass
         self.plot = PlotWidgetContainer(parent=self)
         self.setCentralWidget(self.plot)
-        self.plotWidget: Optional[PlotWidget] = None
+        self.plotWidget: PlotWidget | None = None
 
-        self.nodeToolBar = QtWidgets.QToolBar('Node control', self)
+        self.nodeToolBar = QtWidgets.QToolBar("Node control", self)
         self.addToolBar(self.nodeToolBar)
 
-        self.nodeWidgets: Dict[str, QtWidgets.QDockWidget] = {}
+        self.nodeWidgets: dict[str, QtWidgets.QDockWidget] = {}
         if fc is not None:
             self.addNodeWidgetsFromFlowchart(fc, **kw)
 
         self.setDefaultStyle()
 
     def setDefaultStyle(self) -> None:
-        fontSize = 10*dpiScalingFactor(self)
+        fontSize = 10 * dpiScalingFactor(self)
         self.setStyleSheet(
             f"""
             QToolButton {{
@@ -145,9 +154,9 @@ class PlotWindow(QtWidgets.QMainWindow):
         """
 
         if node.useUi and node.ui is not None and node.uiClass is not None:
-            dockArea = kwargs.get('dockArea', node.ui.preferredDockWidgetArea)
-            visible = kwargs.get('visible', node.uiVisibleByDefault)
-            icon = kwargs.get('icon', node.ui.icon)
+            dockArea = kwargs.get("dockArea", node.ui.preferredDockWidgetArea)
+            visible = kwargs.get("visible", node.uiVisibleByDefault)
+            icon = kwargs.get("icon", node.ui.icon)
 
             d = QtWidgets.QDockWidget(node.name(), self)
             d.setWidget(node.ui)
@@ -162,11 +171,14 @@ class PlotWindow(QtWidgets.QMainWindow):
             if not visible:
                 d.close()
 
-    def addNodeWidgetsFromFlowchart(self, fc: Flowchart,
-                                    exclude: Sequence[str] = (),
-                                    plotNode: str = 'plot',
-                                    makePlotWidget: bool = True,
-                                    **kwargs: Any) -> None:
+    def addNodeWidgetsFromFlowchart(
+        self,
+        fc: Flowchart,
+        exclude: Sequence[str] = (),
+        plotNode: str = "plot",
+        makePlotWidget: bool = True,
+        **kwargs: Any,
+    ) -> None:
         """
         Add all nodes for a flowchart, excluding nodes given in `exclude`.
 
@@ -185,9 +197,9 @@ class PlotWindow(QtWidgets.QMainWindow):
               the options will be passed to :meth:`addNodeWidget` as keyword
               arguments.
         """
-        exclude = tuple(exclude) + ('Input', 'Output')
+        exclude = tuple(exclude) + ("Input", "Output")
 
-        opts = kwargs.get('widgetOptions', dict())
+        opts = kwargs.get("widgetOptions", dict())
 
         for nodeName, node in fc.nodes().items():
             if nodeName not in exclude:
@@ -210,23 +222,23 @@ class PlotWindow(QtWidgets.QMainWindow):
         return event.accept()
 
 
-def makeFlowchartWithPlotWindow(nodes: List[Tuple[str, Type[Node]]], **kwargs: Any) \
-        -> Tuple[PlotWindow, Flowchart]:
-    nodes.append(('plot', PlotNode))
+def makeFlowchartWithPlotWindow(
+    nodes: list[tuple[str, type[Node]]], **kwargs: Any
+) -> tuple[PlotWindow, Flowchart]:
+    nodes.append(("plot", PlotNode))
     fc = linearFlowchart(*nodes)
-    win = PlotWindow(fc=fc, plotNode='plot', **kwargs)
+    win = PlotWindow(fc=fc, plotNode="plot", **kwargs)
     return win, fc
 
 
 class SnapshotWidget(QtWidgets.QTreeWidget):
-
-    def __init__(self, parent: Optional[QtWidgets.QTreeWidget] = None):
+    def __init__(self, parent: QtWidgets.QTreeWidget | None = None):
         super().__init__(parent)
 
-        self.setHeaderLabels(['Key', 'Value'])
+        self.setHeaderLabels(["Key", "Value"])
         self.setColumnCount(2)
 
-    def loadSnapshot(self, snapshotDict : Optional[dict]) -> None:
+    def loadSnapshot(self, snapshotDict: dict | None) -> None:
         """
         Loads a qcodes DataSet snapshot in the tree view
         """
@@ -263,9 +275,14 @@ def setVExpanding(w: QtWidgets.QWidget) -> None:
 class Collapsible(QtWidgets.QWidget):
     """A wrapper that allow collapsing a widget."""
 
-    def __init__(self, widget: QtWidgets.QWidget, title: str = '',
-                 parent: Optional[QtWidgets.QWidget] = None,
-                 expanding: bool = True, icon: Optional[QtGui.QIcon] = None) -> None:
+    def __init__(
+        self,
+        widget: QtWidgets.QWidget,
+        title: str = "",
+        parent: QtWidgets.QWidget | None = None,
+        expanding: bool = True,
+        icon: QtGui.QIcon | None = None,
+    ) -> None:
         """Constructor.
 
         :param widget: the widget we'd like to collapse.
@@ -287,8 +304,8 @@ class Collapsible(QtWidgets.QWidget):
         self.collapsedTitle = "[+] " + title
 
         self.btn = QtWidgets.QPushButton(self.expandedTitle, parent=self)
-        self.btn.setStyleSheet("""background: white; 
-                                  color: black; 
+        self.btn.setStyleSheet("""background: white;
+                                  color: black;
                                   border: 2px solid white;
                                   text-align: left;""")
         self.btn.setFlat(True)
@@ -343,8 +360,9 @@ class DimensionCombo(QtWidgets.QComboBox):
     #: emitted when the user selects a dimension.
     dimensionSelected = Signal(str)
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None,
-                 dimensionType: str = 'axes') -> None:
+    def __init__(
+        self, parent: QtWidgets.QWidget | None = None, dimensionType: str = "axes"
+    ) -> None:
         """Constructor.
 
         :param parent: parent widget
@@ -352,17 +370,17 @@ class DimensionCombo(QtWidgets.QComboBox):
         """
         super().__init__(parent)
 
-        self.node: Optional[Node] = None
+        self.node: Node | None = None
         self.dimensionType = dimensionType
 
         self.clear()
-        self.entries = ['None']
+        self.entries = ["None"]
         for e in self.entries:
             self.addItem(e)
 
         self.currentTextChanged.connect(self.signalDimensionSelection)
 
-    def connectNode(self, node: Optional[Node] = None) -> None:
+    def connectNode(self, node: Node | None = None) -> None:
         """Connect a node. will result in populating the combo box options
         based on dimensions available in the node data.
 
@@ -371,9 +389,9 @@ class DimensionCombo(QtWidgets.QComboBox):
         if node is None:
             raise RuntimeError
         self.node = node
-        if self.dimensionType == 'axes':
+        if self.dimensionType == "axes":
             self.node.dataAxesChanged.connect(self.setDimensions)
-        elif self.dimensionType == 'dependents':
+        elif self.dimensionType == "dependents":
             self.node.dataDependentsChanged.connect(self.setDimensions)
         else:
             self.node.dataFieldsChanged.connect(self.setDimensions)
@@ -391,7 +409,7 @@ class DimensionCombo(QtWidgets.QComboBox):
             self.addItem(d)
 
     @Slot(str)
-    @emitGuiUpdate('dimensionSelected')
+    @emitGuiUpdate("dimensionSelected")
     def signalDimensionSelection(self, val: str) -> str:
         return val
 
@@ -402,12 +420,12 @@ class DimensionSelector(FormLayoutWrapper):
 
     Contains a label and a :class:`.DimensionCombo`."""
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(
             parent=parent,
-            elements=[('Dimension', DimensionCombo(dimensionType='all'))],
+            elements=[("Dimension", DimensionCombo(dimensionType="all"))],
         )
-        self.combo = self.elements['Dimension']
+        self.combo = self.elements["Dimension"]
 
 
 class DependentSelector(FormLayoutWrapper):
@@ -416,12 +434,12 @@ class DependentSelector(FormLayoutWrapper):
 
     Contains a label and a :class:`.DimensionCombo`."""
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(
             parent=parent,
-            elements=[('Dependent', DimensionCombo(dimensionType='dependents'))],
+            elements=[("Dependent", DimensionCombo(dimensionType="dependents"))],
         )
-        self.combo = self.elements['Dependent']
+        self.combo = self.elements["Dependent"]
 
 
 class AxisSelector(FormLayoutWrapper):
@@ -430,12 +448,12 @@ class AxisSelector(FormLayoutWrapper):
 
     Contains a label and a :class:`.DimensionCombo`."""
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(
             parent=parent,
-            elements=[('Axis', DimensionCombo(dimensionType='axes'))],
+            elements=[("Axis", DimensionCombo(dimensionType="axes"))],
         )
-        self.combo = self.elements['Axis']
+        self.combo = self.elements["Axis"]
 
 
 class MultiDimensionSelector(QtWidgets.QListWidget):
@@ -444,8 +462,9 @@ class MultiDimensionSelector(QtWidgets.QListWidget):
     #: signal (List[str]) that is emitted when the selection is modified.
     dimensionSelectionMade = Signal(list)
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None,
-                 dimensionType: str = 'all') -> None:
+    def __init__(
+        self, parent: QtWidgets.QWidget | None = None, dimensionType: str = "all"
+    ) -> None:
         """Constructor.
 
         :param parent: parent widget.
@@ -453,13 +472,13 @@ class MultiDimensionSelector(QtWidgets.QListWidget):
         """
         super().__init__(parent)
 
-        self.node: Optional[Node] = None
+        self.node: Node | None = None
         self.dimensionType = dimensionType
 
         self.setSelectionMode(self.MultiSelection)
         self.itemSelectionChanged.connect(self.emitSelection)
 
-    def setDimensions(self, dimensions: List[str]) -> None:
+    def setDimensions(self, dimensions: list[str]) -> None:
         """set the available dimensions.
 
         :param dimensions: list of dimension names.
@@ -467,7 +486,7 @@ class MultiDimensionSelector(QtWidgets.QListWidget):
         self.clear()
         self.addItems(dimensions)
 
-    def getSelected(self) -> List[str]:
+    def getSelected(self) -> list[str]:
         """Get selected dimensions.
 
         :return: List of dimensions (as strings).
@@ -475,7 +494,7 @@ class MultiDimensionSelector(QtWidgets.QListWidget):
         selectedItems = self.selectedItems()
         return [s.text() for s in selectedItems]
 
-    def setSelected(self, selected: List[str]) -> None:
+    def setSelected(self, selected: list[str]) -> None:
         """Set dimension selection.
 
         :param selected: List of dimensions to be selected.
@@ -491,7 +510,7 @@ class MultiDimensionSelector(QtWidgets.QListWidget):
     def emitSelection(self) -> None:
         self.dimensionSelectionMade.emit(self.getSelected())
 
-    def connectNode(self, node: Optional[Node] = None) -> None:
+    def connectNode(self, node: Node | None = None) -> None:
         """Connect a node. Will result in populating the available options
         based on dimensions available in the node data.
 
@@ -500,9 +519,9 @@ class MultiDimensionSelector(QtWidgets.QListWidget):
         if node is None:
             raise RuntimeError
         self.node = node
-        if self.dimensionType == 'axes':
+        if self.dimensionType == "axes":
             self.node.dataAxesChanged.connect(self.setDimensions)
-        elif self.dimensionType == 'dependents':
+        elif self.dimensionType == "dependents":
             self.node.dataDependentsChanged.connect(self.setDimensions)
         else:
             self.node.dataFieldsChanged.connect(self.setDimensions)

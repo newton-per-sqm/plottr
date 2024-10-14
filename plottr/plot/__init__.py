@@ -1,2 +1,1 @@
-from .base import PlotNode, PlotWidgetContainer, makeFlowchartWithPlot, \
-    PlotWidget
+from .base import PlotNode, PlotWidget, PlotWidgetContainer, makeFlowchartWithPlot

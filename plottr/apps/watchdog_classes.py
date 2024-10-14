@@ -1,10 +1,10 @@
 from logging import getLogger
 from pathlib import Path
 
+from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileSystemEvent
-from plottr import QtCore, Signal
 
+from plottr import QtCore, Signal
 
 logger = getLogger(__name__)
 
@@ -26,11 +26,14 @@ class QtHandler(FileSystemEventHandler):
 
     """
 
-    def __init__(self, closed_signal: Signal,
-                 deleted_signal: Signal,
-                 moved_signal: Signal,
-                 created_signal: Signal,
-                 modified_signal: Signal):
+    def __init__(
+        self,
+        closed_signal: Signal,
+        deleted_signal: Signal,
+        moved_signal: Signal,
+        created_signal: Signal,
+        modified_signal: Signal,
+    ):
         super().__init__()
         self.closed_signal = closed_signal
         self.deleted_signal = deleted_signal
@@ -60,6 +63,7 @@ class WatcherClient(QtCore.QObject):
     purpose is to connect the watchdog functionality with a Qt app. Contains all the signals that are emitted by the
     QtHandler.
     """
+
     # Signal(FileSystemEvent) -- Emitted when a file is closed.
     #: Arguments:
     #:   - The FileSystemEvent with the information for the closed directory event.
@@ -89,14 +93,16 @@ class WatcherClient(QtCore.QObject):
         super().__init__()
         self.directory = directory
         self.observer = Observer()
-        self.handler = QtHandler(closed_signal=self.closed,  # type: ignore[arg-type]
-                                 deleted_signal=self.deleted,  # type: ignore[arg-type]
-                                 moved_signal=self.moved,  # type: ignore[arg-type]
-                                 created_signal=self.created,  # type: ignore[arg-type]
-                                 modified_signal=self.modified)  # type: ignore[arg-type]
+        self.handler = QtHandler(
+            closed_signal=self.closed,  # type: ignore[arg-type]
+            deleted_signal=self.deleted,  # type: ignore[arg-type]
+            moved_signal=self.moved,  # type: ignore[arg-type]
+            created_signal=self.created,  # type: ignore[arg-type]
+            modified_signal=self.modified,
+        )  # type: ignore[arg-type]
 
     def run(self) -> None:
-        logger.info('starting the watcher')
+        logger.info("starting the watcher")
         self.observer.schedule(self.handler, self.directory, recursive=True)
         self.observer.start()
         try:
@@ -105,4 +111,3 @@ class WatcherClient(QtCore.QObject):
         finally:
             self.observer.stop()
             self.observer.join()
-

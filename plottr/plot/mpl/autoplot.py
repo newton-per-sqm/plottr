@@ -1,10 +1,9 @@
-"""``plottr.plot.mpl.autoplot`` -- This module contains the tools for automatic plotting with matplotlib.
-"""
+"""``plottr.plot.mpl.autoplot`` -- This module contains the tools for automatic plotting with matplotlib."""
 
 import logging
 from collections import OrderedDict
-from typing import Dict, List, Tuple, Union, Optional, Any, Type, cast
 from types import TracebackType
+from typing import Any, cast
 
 import numpy as np
 from matplotlib.artist import Artist
@@ -13,17 +12,30 @@ from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 
-from plottr import QtWidgets, QtCore, Signal, Slot
+from plottr import QtCore, QtWidgets, Signal, Slot
 from plottr.data.datadict import DataDictBase
-from plottr.icons import (get_singleTracePlotIcon, get_multiTracePlotIcon, get_imagePlotIcon,
-                          get_colormeshPlotIcon, get_scatterPlot2dIcon)
 from plottr.gui.tools import dpiScalingFactor
+from plottr.icons import (
+    get_colormeshPlotIcon,
+    get_imagePlotIcon,
+    get_multiTracePlotIcon,
+    get_scatterPlot2dIcon,
+    get_singleTracePlotIcon,
+)
+
+from ..base import AutoFigureMaker as BaseFM
+from ..base import (
+    ComplexRepresentation,
+    PlotDataType,
+    PlotItem,
+    PlotWidgetContainer,
+    determinePlotDataType,
+)
 from .plotting import PlotType, colorplot2d
 from .widgets import MPLPlotWidget
-from ..base import AutoFigureMaker as BaseFM, PlotDataType, \
-    PlotItem, ComplexRepresentation, determinePlotDataType, PlotWidgetContainer
 
 logger = logging.getLogger(__name__)
+
 
 class FigureMaker(BaseFM):
     """Matplotlib implementation for :class:`.AutoFigureMaker`.
@@ -47,32 +59,38 @@ class FigureMaker(BaseFM):
     def __enter__(self) -> "FigureMaker":
         return self
 
-    def __exit__(self, exc_type: Optional[Type[BaseException]],
-                 exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         self.fig.clear()
         return super().__exit__(exc_type, exc_value, traceback)
 
     # inherited methods
-    def addData(self, *data: Union[np.ndarray, np.ma.MaskedArray],
-                join: Optional[int] = None,
-                labels: Optional[List[str]] = None,
-                plotDataType: PlotDataType = PlotDataType.unknown,
-                **plotOptions: Any) -> int:
-
+    def addData(
+        self,
+        *data: np.ndarray | np.ma.MaskedArray,
+        join: int | None = None,
+        labels: list[str] | None = None,
+        plotDataType: PlotDataType = PlotDataType.unknown,
+        **plotOptions: Any,
+    ) -> int:
         if self.plotType == PlotType.multitraces and join is None:
             join = self.previousPlotId()
-        return super().addData(*data, join=join, labels=labels,
-                               plotDataType=plotDataType, **plotOptions)
+        return super().addData(
+            *data, join=join, labels=labels, plotDataType=plotDataType, **plotOptions
+        )
 
-    def makeSubPlots(self, nSubPlots: int) -> List[Axes]:
+    def makeSubPlots(self, nSubPlots: int) -> list[Axes]:
         """Create subplots (`Axes`). They are arranged on a grid that's close to square.
 
         :param nSubPlots: number of subplots to make
         :return: list of matplotlib axes.
         """
         if nSubPlots > 0:
-            nrows = int(nSubPlots ** .5 + .5)
+            nrows = int(nSubPlots**0.5 + 0.5)
             ncols = int(np.ceil(nSubPlots / nrows))
             gs = GridSpec(nrows, ncols, self.fig)
             axes = [self.fig.add_subplot(gs[i]) for i in range(nSubPlots)]
@@ -96,14 +114,14 @@ class FigureMaker(BaseFM):
                 axes[0].set_ylabel(labels[1][0])
 
         if isinstance(axes, list) and len(labels) == 2 and len(set(labels[1])) > 1:
-            axes[0].legend(loc='upper right', fontsize='small')
+            axes[0].legend(loc="upper right", fontsize="small")
 
         if isinstance(axes, list) and len(axes) > 1:
             if len(labels) > 2 and len(set(labels[2])) == 1:
                 axes[1].set_ylabel(labels[2][0])
         return None
 
-    def plot(self, plotItem: PlotItem) -> Optional[Union[Artist, List[Artist]]]:
+    def plot(self, plotItem: PlotItem) -> Artist | list[Artist] | None:
         """Plots data in a PlotItem.
 
         :param plotItem: the item to plot.
@@ -117,22 +135,30 @@ class FigureMaker(BaseFM):
             return None
 
     # methods specific to this class
-    def plotLine(self, plotItem: PlotItem) -> Optional[List[Line2D]]:
+    def plotLine(self, plotItem: PlotItem) -> list[Line2D] | None:
         axes = self.subPlots[plotItem.subPlot].axes
         assert isinstance(axes, list) and len(axes) > 0
         assert len(plotItem.data) == 2
-        lbl = plotItem.labels[-1] if isinstance(plotItem.labels, list) and len(plotItem.labels) > 0 else ''
+        lbl = (
+            plotItem.labels[-1]
+            if isinstance(plotItem.labels, list) and len(plotItem.labels) > 0
+            else ""
+        )
         x, y = plotItem.data
         return axes[0].plot(x, y, label=lbl, **plotItem.plotOptions)
 
-    def plotImage(self, plotItem: PlotItem) -> Optional[Artist]:
+    def plotImage(self, plotItem: PlotItem) -> Artist | None:
         assert len(plotItem.data) == 3
         x, y, z = plotItem.data
         axes = self.subPlots[plotItem.subPlot].axes
         assert isinstance(axes, list) and len(axes) > 0
         im = colorplot2d(axes[0], x, y, z, plotType=self.plotType)
         cb = self.fig.colorbar(im, ax=axes[0], shrink=0.75, pad=0.02)
-        lbl = plotItem.labels[-1] if isinstance(plotItem.labels, list) and len(plotItem.labels) > 0 else ''
+        lbl = (
+            plotItem.labels[-1]
+            if isinstance(plotItem.labels, list) and len(plotItem.labels) > 0
+            else ""
+        )
         cb.set_label(lbl)
         return im
 
@@ -152,87 +178,97 @@ class AutoPlotToolBar(QtWidgets.QToolBar):
     #: signal emitted when the complex data option has been changed
     complexRepresentationSelected = Signal(ComplexRepresentation)
 
-    def __init__(self, name: str, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, name: str, parent: QtWidgets.QWidget | None = None):
         """Constructor for :class:`AutoPlotToolBar`"""
 
         super().__init__(name, parent=parent)
 
-        self.plotasMultiTraces = self.addAction(get_multiTracePlotIcon(),
-                                                'Multiple traces')
+        self.plotasMultiTraces = self.addAction(
+            get_multiTracePlotIcon(), "Multiple traces"
+        )
         self.plotasMultiTraces.setCheckable(True)
         self.plotasMultiTraces.triggered.connect(
-            lambda: self.selectPlotType(PlotType.multitraces))
+            lambda: self.selectPlotType(PlotType.multitraces)
+        )
 
-        self.plotasSingleTraces = self.addAction(get_singleTracePlotIcon(),
-                                                 'Individual traces')
+        self.plotasSingleTraces = self.addAction(
+            get_singleTracePlotIcon(), "Individual traces"
+        )
         self.plotasSingleTraces.setCheckable(True)
         self.plotasSingleTraces.triggered.connect(
-            lambda: self.selectPlotType(PlotType.singletraces))
+            lambda: self.selectPlotType(PlotType.singletraces)
+        )
 
         self.addSeparator()
 
-        self.plotasImage = self.addAction(get_imagePlotIcon(),
-                                          'Image')
+        self.plotasImage = self.addAction(get_imagePlotIcon(), "Image")
         self.plotasImage.setCheckable(True)
-        self.plotasImage.triggered.connect(
-            lambda: self.selectPlotType(PlotType.image))
+        self.plotasImage.triggered.connect(lambda: self.selectPlotType(PlotType.image))
 
-        self.plotasMesh = self.addAction(get_colormeshPlotIcon(),
-                                         'Color mesh')
+        self.plotasMesh = self.addAction(get_colormeshPlotIcon(), "Color mesh")
         self.plotasMesh.setCheckable(True)
         self.plotasMesh.triggered.connect(
-            lambda: self.selectPlotType(PlotType.colormesh))
+            lambda: self.selectPlotType(PlotType.colormesh)
+        )
 
-        self.plotasScatter2d = self.addAction(get_scatterPlot2dIcon(),
-                                              'Scatter 2D')
+        self.plotasScatter2d = self.addAction(get_scatterPlot2dIcon(), "Scatter 2D")
         self.plotasScatter2d.setCheckable(True)
         self.plotasScatter2d.triggered.connect(
-            lambda: self.selectPlotType(PlotType.scatter2d))
+            lambda: self.selectPlotType(PlotType.scatter2d)
+        )
 
         # other options
         self.addSeparator()
 
-        self.plotReal = self.addAction('Real')
+        self.plotReal = self.addAction("Real")
         self.plotReal.setCheckable(True)
         self.plotReal.triggered.connect(
-            lambda: self.selectComplexType(ComplexRepresentation.real))
+            lambda: self.selectComplexType(ComplexRepresentation.real)
+        )
 
-        self.plotReIm = self.addAction('Re/Im')
+        self.plotReIm = self.addAction("Re/Im")
         self.plotReIm.setCheckable(True)
         self.plotReIm.triggered.connect(
-            lambda: self.selectComplexType(ComplexRepresentation.realAndImag))
+            lambda: self.selectComplexType(ComplexRepresentation.realAndImag)
+        )
 
-        self.plotReImSep = self.addAction('Split Re/Im')
+        self.plotReImSep = self.addAction("Split Re/Im")
         self.plotReImSep.setCheckable(True)
         self.plotReImSep.triggered.connect(
-            lambda: self.selectComplexType(ComplexRepresentation.realAndImagSeparate))
+            lambda: self.selectComplexType(ComplexRepresentation.realAndImagSeparate)
+        )
 
-        self.plotMagPhase = self.addAction('Mag/Phase')
+        self.plotMagPhase = self.addAction("Mag/Phase")
         self.plotMagPhase.setCheckable(True)
         self.plotMagPhase.triggered.connect(
-            lambda: self.selectComplexType(ComplexRepresentation.magAndPhase))
+            lambda: self.selectComplexType(ComplexRepresentation.magAndPhase)
+        )
 
-        self.plotTypeActions = OrderedDict({
-            PlotType.multitraces: self.plotasMultiTraces,
-            PlotType.singletraces: self.plotasSingleTraces,
-            PlotType.image: self.plotasImage,
-            PlotType.colormesh: self.plotasMesh,
-            PlotType.scatter2d: self.plotasScatter2d,
-        })
+        self.plotTypeActions = OrderedDict(
+            {
+                PlotType.multitraces: self.plotasMultiTraces,
+                PlotType.singletraces: self.plotasSingleTraces,
+                PlotType.image: self.plotasImage,
+                PlotType.colormesh: self.plotasMesh,
+                PlotType.scatter2d: self.plotasScatter2d,
+            }
+        )
 
-        self.ComplexActions = OrderedDict({
-            ComplexRepresentation.real: self.plotReal,
-            ComplexRepresentation.realAndImag: self.plotReIm,
-            ComplexRepresentation.realAndImagSeparate: self.plotReImSep,
-            ComplexRepresentation.magAndPhase: self.plotMagPhase
-        })
+        self.ComplexActions = OrderedDict(
+            {
+                ComplexRepresentation.real: self.plotReal,
+                ComplexRepresentation.realAndImag: self.plotReIm,
+                ComplexRepresentation.realAndImagSeparate: self.plotReImSep,
+                ComplexRepresentation.magAndPhase: self.plotMagPhase,
+            }
+        )
 
         self._currentPlotType = PlotType.empty
-        self._currentlyAllowedPlotTypes: Tuple[PlotType, ...] = ()
+        self._currentlyAllowedPlotTypes: tuple[PlotType, ...] = ()
 
         self._currentComplex = ComplexRepresentation.realAndImag
         self.ComplexActions[self._currentComplex].setChecked(True)
-        self._currentlyAllowedComplexTypes: Tuple[ComplexRepresentation, ...] = ()
+        self._currentlyAllowedComplexTypes: tuple[ComplexRepresentation, ...] = ()
 
     def selectPlotType(self, plotType: PlotType) -> None:
         """makes sure that the selected `plotType` is active (checked), all
@@ -346,7 +382,7 @@ class AutoPlot(MPLPlotWidget):
     presented through a toolbar.
     """
 
-    def __init__(self, parent: Optional[PlotWidgetContainer] = None):
+    def __init__(self, parent: PlotWidgetContainer | None = None):
         super().__init__(parent=parent)
 
         self.plotDataType = PlotDataType.unknown
@@ -356,27 +392,25 @@ class AutoPlot(MPLPlotWidget):
         self.complexRepresentation = ComplexRepresentation.realAndImag
 
         # A toolbar for configuring the plot
-        self.plotOptionsToolBar = AutoPlotToolBar('Plot options', self)
+        self.plotOptionsToolBar = AutoPlotToolBar("Plot options", self)
         layout = cast(QtWidgets.QVBoxLayout, self.layout())
         layout.insertWidget(1, self.plotOptionsToolBar)
 
-        self.plotOptionsToolBar.plotTypeSelected.connect(
-            self._plotTypeFromToolBar
-        )
+        self.plotOptionsToolBar.plotTypeSelected.connect(self._plotTypeFromToolBar)
         self.plotOptionsToolBar.complexRepresentationSelected.connect(
             self._complexPreferenceFromToolBar
         )
 
         scaling = dpiScalingFactor(self)
-        iconSize = int(36 + 8*(scaling - 1))
+        iconSize = int(36 + 8 * (scaling - 1))
         self.plotOptionsToolBar.setIconSize(QtCore.QSize(iconSize, iconSize))
-        self.setMinimumSize(int(640*scaling), int(480*scaling))
+        self.setMinimumSize(int(640 * scaling), int(480 * scaling))
 
     def updatePlot(self) -> None:
         self.plot.draw()
         QtCore.QCoreApplication.processEvents()
 
-    def setData(self, data: Optional[DataDictBase]) -> None:
+    def setData(self, data: DataDictBase | None) -> None:
         """Analyses data and determines whether/what to plot.
 
         :param data: input data
@@ -399,10 +433,10 @@ class AutoPlot(MPLPlotWidget):
                 PlotType.scatter2d,
             )
 
-        elif self.plotDataType in [PlotDataType.scatter1d,
-                                   PlotDataType.line1d]:
+        elif self.plotDataType in [PlotDataType.scatter1d, PlotDataType.line1d]:
             self.plotOptionsToolBar.setAllowedPlotTypes(
-                PlotType.multitraces, PlotType.singletraces,
+                PlotType.multitraces,
+                PlotType.singletraces,
             )
 
         else:
@@ -430,7 +464,9 @@ class AutoPlot(MPLPlotWidget):
             self._plotData()
 
     @Slot(ComplexRepresentation)
-    def _complexPreferenceFromToolBar(self, complexRepresentation: ComplexRepresentation) -> None:
+    def _complexPreferenceFromToolBar(
+        self, complexRepresentation: ComplexRepresentation
+    ) -> None:
         if complexRepresentation is not self.complexRepresentation:
             self.complexRepresentation = complexRepresentation
             self._plotData()
@@ -447,7 +483,7 @@ class AutoPlot(MPLPlotWidget):
 
         assert self.data is not None
 
-        kw: Dict[str, Any] = {}
+        kw: dict[str, Any] = {}
         with FigureMaker(self.plot.fig) as fm:
             fm.plotType = self.plotType
             if not self.dataIsComplex():
@@ -460,9 +496,11 @@ class AutoPlot(MPLPlotWidget):
                 dvals = self.data.data_vals(dn)
                 plotId = fm.addData(
                     *[np.asanyarray(self.data.data_vals(n)) for n in indeps] + [dvals],
-                    labels=[str(self.data.label(n)) for n in indeps] + [str(self.data.label(dn))],
+                    labels=[str(self.data.label(n)) for n in indeps]
+                    + [str(self.data.label(dn))],
                     plotDataType=self.plotDataType,
-                    **kw)
+                    **kw,
+                )
 
         self.setMeta(self.data)
         self.updatePlot()

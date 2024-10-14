@@ -9,21 +9,28 @@ object for plotting data automatically using ``pyqtgraph``.
 """
 
 import logging
-from pathlib import Path
 import time
 from dataclasses import dataclass
-from typing import List, Optional, Any
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 from pyqtgraph import mkPen
 
-from plottr import QtWidgets, QtCore, Signal, Slot, \
-    config_entry as getcfg
+from plottr import QtCore, QtWidgets, Signal, Slot
+from plottr import config_entry as getcfg
 from plottr.data.datadict import DataDictBase
-from .plots import Plot, PlotWithColorbar, PlotBase
-from ..base import AutoFigureMaker as BaseFM, PlotDataType, \
-    PlotItem, ComplexRepresentation, determinePlotDataType, \
-    PlotWidgetContainer, PlotWidget
+
+from ..base import AutoFigureMaker as BaseFM
+from ..base import (
+    ComplexRepresentation,
+    PlotDataType,
+    PlotItem,
+    PlotWidget,
+    PlotWidgetContainer,
+    determinePlotDataType,
+)
+from .plots import Plot, PlotBase, PlotWithColorbar
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +43,14 @@ class FigureWidget(QtWidgets.QWidget):
     Widget has a vertical layout, and plots can be added in a single column.
     """
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
         """Constructor for :class:`.FigureMakerWidget`.
 
         :param parent: parent widget.
         """
         super().__init__(parent=parent)
 
-        self.subPlots: List[PlotBase] = []
+        self.subPlots: list[PlotBase] = []
 
         self.title = QtWidgets.QLabel(parent=self)
         self.title.setAlignment(QtCore.Qt.AlignHCenter)
@@ -58,7 +65,7 @@ class FigureWidget(QtWidgets.QWidget):
         layout.addWidget(self.split)
         self.setLayout(layout)
 
-        self.setTitle('')
+        self.setTitle("")
 
     def addPlot(self, plot: PlotBase) -> None:
         """Add a :class:`.PlotBase` widget.
@@ -80,7 +87,7 @@ class FigureWidget(QtWidgets.QWidget):
             p.deleteLater()
         self.subPlots = []
 
-    def setTitle(self, title: str = '') -> None:
+    def setTitle(self, title: str = "") -> None:
         self.title.setText(title)
         if len(title.strip()) == 0:
             self.title.setVisible(False)
@@ -97,9 +104,12 @@ class FigureMaker(BaseFM):
     # TODO: make scrollable when many figures (set min size)?
     # TODO: check for valid plot data
 
-    def __init__(self, widget: Optional[FigureWidget] = None,
-                 clearWidget: bool = True,
-                 parentWidget: Optional[QtWidgets.QWidget] = None):
+    def __init__(
+        self,
+        widget: FigureWidget | None = None,
+        clearWidget: bool = True,
+        parentWidget: QtWidgets.QWidget | None = None,
+    ):
         """Constructor for :class:`.FigureMaker`.
 
         :param widget: a widget produced by an earlier use of this class
@@ -129,11 +139,14 @@ class FigureMaker(BaseFM):
     def subPlotFromId(self, subPlotId: int) -> PlotBase:
         """Get SubPlot from ID."""
         subPlots = self.subPlots[subPlotId].axes
-        assert isinstance(subPlots, list) and len(subPlots) > 0 and \
-               isinstance(subPlots[0], PlotBase)
+        assert (
+            isinstance(subPlots, list)
+            and len(subPlots) > 0
+            and isinstance(subPlots[0], PlotBase)
+        )
         return subPlots[0]
 
-    def makeSubPlots(self, nSubPlots: int) -> List[PlotBase]:
+    def makeSubPlots(self, nSubPlots: int) -> list[PlotBase]:
         """Create empty subplots in the widgets.
 
         If ``clearWidget`` was not set to ``True`` in the constructor,
@@ -172,10 +185,10 @@ class FigureMaker(BaseFM):
                 subPlot.plot.setLabel("bottom", labels[0][0])
 
             if len(set(labels[1])) == 1:
-                subPlot.plot.setLabel('left', labels[1][0])
+                subPlot.plot.setLabel("left", labels[1][0])
 
             if len(set(labels[2])) == 1:
-                subPlot.colorbar.setLabel('left', labels[2][0])
+                subPlot.colorbar.setLabel("left", labels[2][0])
 
     def plot(self, plotItem: PlotItem) -> None:
         """Plot the given item."""
@@ -184,58 +197,80 @@ class FigureMaker(BaseFM):
                 plotItem.plotDataType = PlotDataType.scatter1d
             elif len(plotItem.data) == 3:
                 plotItem.plotDataType = PlotDataType.scatter2d
-        
-        #If the Complex Representation is LogMag
-        if self.complexRepresentation == ComplexRepresentation.log_MagAndPhase:
 
-            #Switch the 1d plots to the logarithmic variation if the plot is the Magnitude plot (not the Phase Plot)
+        # If the Complex Representation is LogMag
+        if self.complexRepresentation == ComplexRepresentation.log_MagAndPhase:
+            # Switch the 1d plots to the logarithmic variation if the plot is the Magnitude plot (not the Phase Plot)
             if plotItem.subPlot == 0:
-                if plotItem.plotDataType == PlotDataType.scatter1d: plotItem.plotDataType = PlotDataType.log10_scatter1d
-                if plotItem.plotDataType == PlotDataType.line1d: plotItem.plotDataType = PlotDataType.log10_line1d
-        
-        if plotItem.plotDataType in [PlotDataType.scatter1d, PlotDataType.line1d,PlotDataType.log10_line1d,PlotDataType.log10_scatter1d]:
+                if plotItem.plotDataType == PlotDataType.scatter1d:
+                    plotItem.plotDataType = PlotDataType.log10_scatter1d
+                if plotItem.plotDataType == PlotDataType.line1d:
+                    plotItem.plotDataType = PlotDataType.log10_line1d
+
+        if plotItem.plotDataType in [
+            PlotDataType.scatter1d,
+            PlotDataType.line1d,
+            PlotDataType.log10_line1d,
+            PlotDataType.log10_scatter1d,
+        ]:
             self._1dPlot(plotItem)
         elif plotItem.plotDataType == PlotDataType.grid2d:
             self._colorPlot(plotItem)
         elif plotItem.plotDataType == PlotDataType.scatter2d:
             self._scatterPlot2d(plotItem)
         else:
-            raise NotImplementedError('Cannot plot this data.')
+            raise NotImplementedError("Cannot plot this data.")
 
     def _1dPlot(self, plotItem: PlotItem) -> None:
-        colors = getcfg('main', 'pyqtgraph', 'line_colors', default=['r', 'b', 'g'])
-        symbols = getcfg('main', 'pyqtgraph', 'line_symbols', default=['o'])
-        symbolSize = getcfg('main', 'pyqtgraph', 'line_symbol_size', default=5)
+        colors = getcfg("main", "pyqtgraph", "line_colors", default=["r", "b", "g"])
+        symbols = getcfg("main", "pyqtgraph", "line_symbols", default=["o"])
+        symbolSize = getcfg("main", "pyqtgraph", "line_symbol_size", default=5)
 
         subPlot = self.subPlotFromId(plotItem.subPlot)
 
         assert len(plotItem.data) == 2
         x, y = plotItem.data
 
-
         color = colors[self.findPlotIndexInSubPlot(plotItem.id) % len(colors)]
         symbol = symbols[self.findPlotIndexInSubPlot(plotItem.id) % len(symbols)]
         if isinstance(plotItem.labels, list):
-             name = plotItem.labels[-1]
+            name = plotItem.labels[-1]
         else:
-            name = ''
+            name = ""
 
-        #flatten and apply data transformations (if applicable)
+        # flatten and apply data transformations (if applicable)
         x = x.flatten()
-        if plotItem.plotDataType in [PlotDataType.log10_line1d, PlotDataType.log10_scatter1d]:
-            y = 20*np.log(y.flatten())
+        if plotItem.plotDataType in [
+            PlotDataType.log10_line1d,
+            PlotDataType.log10_scatter1d,
+        ]:
+            y = 20 * np.log(y.flatten())
         else:
             y = y.flatten()
 
-        #plot either line or scatter depending on what graph is being requested
+        # plot either line or scatter depending on what graph is being requested
         if plotItem.plotDataType in [PlotDataType.line1d, PlotDataType.log10_line1d]:
-            return subPlot.plot.plot(x, y, name=name,
-                                     pen=mkPen(color, width=1), symbol=symbol, symbolBrush=color,
-                                     symbolPen=None, symbolSize=symbolSize)
-        else: #plotItem.plotDataType is either PlotDataType.scatter1d or PlotDataType.log10_scatter1d
-            return subPlot.plot.plot(x, y, name=name,
-                                     pen=None, symbol=symbol, symbolBrush=color,
-                                     symbolPen=None, symbolSize=symbolSize)
+            return subPlot.plot.plot(
+                x,
+                y,
+                name=name,
+                pen=mkPen(color, width=1),
+                symbol=symbol,
+                symbolBrush=color,
+                symbolPen=None,
+                symbolSize=symbolSize,
+            )
+        else:  # plotItem.plotDataType is either PlotDataType.scatter1d or PlotDataType.log10_scatter1d
+            return subPlot.plot.plot(
+                x,
+                y,
+                name=name,
+                pen=None,
+                symbol=symbol,
+                symbolBrush=color,
+                symbolPen=None,
+                symbolSize=symbolSize,
+            )
 
     def _colorPlot(self, plotItem: PlotItem) -> None:
         subPlot = self.subPlotFromId(plotItem.subPlot)
@@ -255,27 +290,28 @@ class AutoPlot(PlotWidget):
     Uses :class:`.FigureMaker` to produce subplots.
     """
 
-    def __init__(self, parent: Optional[PlotWidgetContainer]) -> None:
+    def __init__(self, parent: PlotWidgetContainer | None) -> None:
         """Constructor for the pyqtgraph auto plot widget.
 
         :param parent: plot widget container
         """
         super().__init__(parent=parent)
 
-        self.fmWidget: Optional[FigureWidget] = None
-        self.figConfig: Optional[FigureConfigToolBar] = None
+        self.fmWidget: FigureWidget | None = None
+        self.figConfig: FigureConfigToolBar | None = None
         self.figOptions: FigureOptions = FigureOptions()
-        self.title : Optional[str] = None
+        self.title: str | None = None
 
         layout = QtWidgets.QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         self.setLayout(layout)
-        self.setMinimumSize(*getcfg('main', 'pyqtgraph', 'minimum_plot_size',
-                                    default=(400, 400)))
+        self.setMinimumSize(
+            *getcfg("main", "pyqtgraph", "minimum_plot_size", default=(400, 400))
+        )
 
-    def setData(self, data: Optional[DataDictBase]) -> None:
+    def setData(self, data: DataDictBase | None) -> None:
         """Uses :class:`.FigureMaker` to populate the plot(s).
 
         This method aims to re-use existing plotwidgets if possible -- i.e.,
@@ -292,19 +328,17 @@ class AutoPlot(PlotWidget):
 
         fmKwargs = {}  # {'widget': self.fmWidget}
         dc = self.dataChanges
-        if not dc['dataTypeChanged'] and not dc['dataStructureChanged']:
-            fmKwargs['clearWidget'] = False
+        if not dc["dataTypeChanged"] and not dc["dataStructureChanged"]:
+            fmKwargs["clearWidget"] = False
         else:
-            fmKwargs['clearWidget'] = True
+            fmKwargs["clearWidget"] = True
         self._plotData(**fmKwargs)
 
     def _plotData(self, **kwargs: Any) -> None:
         if self.data is None:
             return
 
-        with FigureMaker(parentWidget=self, widget=self.fmWidget,
-                         **kwargs) as fm:
-
+        with FigureMaker(parentWidget=self, widget=self.fmWidget, **kwargs) as fm:
             fm.complexRepresentation = self.figOptions.complexRepresentation
             fm.combineTraces = self.figOptions.combineLinePlots
 
@@ -314,39 +348,39 @@ class AutoPlot(PlotWidget):
                 pdt = determinePlotDataType(self.data.extract([dep]))
                 plotId = fm.addData(
                     *[np.asanyarray(self.data.data_vals(n)) for n in inds] + [dvals],
-                    labels=[str(self.data.label(n)) for n in inds] + [str(self.data.label(dep))],
+                    labels=[str(self.data.label(n)) for n in inds]
+                    + [str(self.data.label(dep))],
                     plotDataType=pdt,
                 )
 
         if self.fmWidget is None:
             self.fmWidget = fm.widget
             self.layout().addWidget(self.fmWidget)
-            self.figConfig = FigureConfigToolBar(self.figOptions,
-                                                 parent=self)
+            self.figConfig = FigureConfigToolBar(self.figOptions, parent=self)
             self.layout().addWidget(self.figConfig)
             self.figConfig.optionsChanged.connect(self._refreshPlot)
             self.figConfig.figCopied.connect(self.onfigCopied)
             self.figConfig.figSaved.connect(self.onfigSaved)
 
-        if self.data.has_meta('title'):
-            self.fmWidget.setTitle(self.data.meta_val('title'))
-            self.title = self.data.meta_val('title')
+        if self.data.has_meta("title"):
+            self.fmWidget.setTitle(self.data.meta_val("title"))
+            self.title = self.data.meta_val("title")
 
-        #update FigOptions numAxes and imagData
+        # update FigOptions numAxes and imagData
         self.figOptions.numAxes = len(inds)
 
-        #define imagData for single and multiple value data
+        # define imagData for single and multiple value data
         for val in dvals:
             try:
                 if not all(val.imag == 0):
                     self.figOptions.imagData = True
                     break
             except:
-                 if not val.imag == 0:
+                if not val.imag == 0:
                     self.figOptions.imagData = True
                     break
 
-        #Assertions to make mypy happy
+        # Assertions to make mypy happy
         assert self.figConfig is not None
         assert self.figConfig.updateComplexButton() is not None
 
@@ -363,7 +397,9 @@ class AutoPlot(PlotWidget):
         Copy the current figuremaker widget to the clipboard.
         """
         assert isinstance(self.fmWidget, FigureWidget)
-        screenshot = self.fmWidget.grab(rectangle=QtCore.QRect(QtCore.QPoint(0, 0), QtCore.QSize(-1, -1)))
+        screenshot = self.fmWidget.grab(
+            rectangle=QtCore.QRect(QtCore.QPoint(0, 0), QtCore.QSize(-1, -1))
+        )
         clipboard = QtWidgets.QApplication.clipboard()
         clipboard.setImage(screenshot.toImage())
 
@@ -376,14 +412,16 @@ class AutoPlot(PlotWidget):
         """
         assert isinstance(self.fmWidget, FigureWidget)
         assert isinstance(self.data, DataDictBase)
-        screenshot = self.fmWidget.grab(rectangle=QtCore.QRect(QtCore.QPoint(0, 0), QtCore.QSize(-1, -1)))
+        screenshot = self.fmWidget.grab(
+            rectangle=QtCore.QRect(QtCore.QPoint(0, 0), QtCore.QSize(-1, -1))
+        )
         if self.title is not None:
             path = Path(self.title)
             # add a timestamp here
             t = time.localtime()
             time_str = time.strftime(TIMESTRFORMAT, t)
-            filename = time_str+'_'+str(path.stem)+'.png'
-            screenshot.save(str(path.parent)+'/'+filename, format='PNG')
+            filename = time_str + "_" + str(path.stem) + ".png"
+            screenshot.save(str(path.parent) + "/" + filename, format="PNG")
             return
 
         logger.error("Could not find the path of the figure. Figure has not been saved")
@@ -421,8 +459,9 @@ class FigureConfigToolBar(QtWidgets.QToolBar):
     #: Signal() -- emitted when the save figure button has been pressed
     figSaved = Signal()
 
-    def __init__(self, options: FigureOptions,
-                 parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(
+        self, options: FigureOptions, parent: QtWidgets.QWidget | None = None
+    ) -> None:
         """Constructor.
 
         :param options: options object. GUI interaction will make changes
@@ -437,23 +476,21 @@ class FigureConfigToolBar(QtWidgets.QToolBar):
         combineLinePlots.setCheckable(True)
         combineLinePlots.setChecked(self.options.combineLinePlots)
         combineLinePlots.triggered.connect(
-            lambda: self._setOption('combineLinePlots',
-                                    combineLinePlots.isChecked())
+            lambda: self._setOption("combineLinePlots", combineLinePlots.isChecked())
         )
         complexOptions = QtWidgets.QMenu(parent=self)
         complexGroup = QtWidgets.QActionGroup(complexOptions)
         complexGroup.setExclusive(True)
         self._createComplexRepresentation()
-        
-        # Adding functionality to copy and save the graph
-        self.copyFig = self.addAction('Copy Figure', self._copyFig)
-        self.saveFig = self.addAction('Save Figure', self._saveFig)
 
+        # Adding functionality to copy and save the graph
+        self.copyFig = self.addAction("Copy Figure", self._copyFig)
+        self.saveFig = self.addAction("Save Figure", self._saveFig)
 
     def _setOption(self, option: str, value: Any) -> None:
         setattr(self.options, option, value)
         self.optionsChanged.emit()
-        
+
     def _copyFig(self) -> None:
         self.figCopied.emit()
 
@@ -461,17 +498,18 @@ class FigureConfigToolBar(QtWidgets.QToolBar):
         self.figSaved.emit()
 
     def _createComplexRepresentation(self) -> bool:
-        #constructs/reconstructs the Complex Button with different viewing options based upon input data
+        # constructs/reconstructs the Complex Button with different viewing options based upon input data
 
         complexOptions = QtWidgets.QMenu(parent=self)
         complexGroup = QtWidgets.QActionGroup(complexOptions)
         complexGroup.setExclusive(True)
 
         for k in ComplexRepresentation:
-
-            #Checks instance of non-imaginary data (to only enable real view) and 2 independent variables (to disable logMag view)
-            if not self.options.imagData and not k == ComplexRepresentation.real: continue
-            if self.options.numAxes == 2 and k == ComplexRepresentation.log_MagAndPhase: continue
+            # Checks instance of non-imaginary data (to only enable real view) and 2 independent variables (to disable logMag view)
+            if not self.options.imagData and not k == ComplexRepresentation.real:
+                continue
+            if self.options.numAxes == 2 and k == ComplexRepresentation.log_MagAndPhase:
+                continue
 
             a = QtWidgets.QAction(k.label, complexOptions)
             a.setCheckable(True)
@@ -479,24 +517,25 @@ class FigureConfigToolBar(QtWidgets.QToolBar):
             complexOptions.addAction(a)
             a.setChecked(k == self.options.complexRepresentation)
         complexGroup.triggered.connect(
-            lambda _a: self._setOption('complexRepresentation',
-                                       ComplexRepresentation.fromLabel(_a.text()))
+            lambda _a: self._setOption(
+                "complexRepresentation", ComplexRepresentation.fromLabel(_a.text())
+            )
         )
         complexButton = QtWidgets.QToolButton()
         complexButton.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
-        complexButton.setText('Complex')
+        complexButton.setText("Complex")
         complexButton.setPopupMode(QtWidgets.QToolButton.InstantPopup)
         complexButton.setMenu(complexOptions)
 
-        #stylistic edit to ensure that complexButton is the second button, also to ensure that the updateComplexButton removes the correct button
+        # stylistic edit to ensure that complexButton is the second button, also to ensure that the updateComplexButton removes the correct button
         if len(self.actions()) == 1:
             self.addWidget(complexButton)
         else:
-            self.insertAction(self.actions()[1],self.addWidget(complexButton))
+            self.insertAction(self.actions()[1], self.addWidget(complexButton))
         return True
 
     def updateComplexButton(self) -> bool:
-        #remove the second action in the list (currently corresponding to the complexRepresentation button)
+        # remove the second action in the list (currently corresponding to the complexRepresentation button)
         self.removeAction(self.actions()[1])
         self._createComplexRepresentation()
         return True

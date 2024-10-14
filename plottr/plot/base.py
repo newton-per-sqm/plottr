@@ -4,22 +4,22 @@ Everything in here is independent of actual plotting backend, and does not conta
 """
 
 from collections import OrderedDict
+from collections import OrderedDict as OrderedDictType
 from copy import deepcopy
 from dataclasses import dataclass
-from enum import Enum, unique, auto
+from enum import Enum, auto, unique
 from types import TracebackType
-from typing import Dict, List, Type, Tuple, Optional, Any, \
-    OrderedDict as OrderedDictType, Union
+from typing import Any, Optional
 
 import numpy as np
 
-from .. import Signal, Flowchart, QtWidgets
-from ..data.datadict import DataDictBase, DataDict, MeshgridDataDict
+from .. import Flowchart, QtWidgets, Signal
+from ..data.datadict import DataDict, DataDictBase, MeshgridDataDict
 from ..node import Node, linearFlowchart
 from ..utils import LabeledOptions
 
-__author__ = 'Wolfgang Pfaff'
-__license__ = 'MIT'
+__author__ = "Wolfgang Pfaff"
+__license__ = "MIT"
 
 
 class PlotNode(Node):
@@ -30,18 +30,19 @@ class PlotNode(Node):
     Data is just passed through.
     On receipt of new data, :attr:`newPlotData` is emitted.
     """
-    nodeName = 'Plot'
+
+    nodeName = "Plot"
 
     #: Signal emitted when :meth:`process` is called, with the data passed to
     #: it as argument.
     newPlotData = Signal(object)
 
     def __init__(self, name: str):
-        """Constructor for :class:`PlotNode`. """
+        """Constructor for :class:`PlotNode`."""
         super().__init__(name=name)
-        self.plotWidgetContainer: Optional['PlotWidgetContainer'] = None
+        self.plotWidgetContainer: Optional["PlotWidgetContainer"] = None
 
-    def setPlotWidgetContainer(self, w: 'PlotWidgetContainer') -> None:
+    def setPlotWidgetContainer(self, w: "PlotWidgetContainer") -> None:
         """Set the plot widget container.
 
         Makes sure that newly arriving data is sent to plot GUI elements.
@@ -51,7 +52,9 @@ class PlotNode(Node):
         self.plotWidgetContainer = w
         self.newPlotData.connect(self.plotWidgetContainer.setData)
 
-    def process(self, dataIn: Optional[DataDictBase] = None) -> Dict[str, Optional[DataDictBase]]:
+    def process(
+        self, dataIn: DataDictBase | None = None
+    ) -> dict[str, DataDictBase | None]:
         """Emits the :attr:`newPlotData` signal when called.
         Note: does not call the parent method :meth:`plottr.node.node.Node.process`.
 
@@ -74,12 +77,12 @@ class PlotWidgetContainer(QtWidgets.QWidget):
     added to this container.
     """
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
-        """Constructor for :class:`PlotWidgetContainer`. """
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
+        """Constructor for :class:`PlotWidgetContainer`."""
         super().__init__(parent=parent)
 
         self.plotWidget: Optional["PlotWidget"] = None
-        self.data: Optional[DataDictBase] = None
+        self.data: DataDictBase | None = None
 
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -126,25 +129,25 @@ class PlotWidget(QtWidgets.QWidget):
     Implement a child class for actual plotting.
     """
 
-    def __init__(self, parent: Optional[PlotWidgetContainer] = None) -> None:
+    def __init__(self, parent: PlotWidgetContainer | None = None) -> None:
         super().__init__(parent=parent)
 
-        self.data: Optional[DataDictBase] = None
-        self.dataType: Optional[Type[DataDictBase]] = None
-        self.dataStructure: Optional[DataDictBase] = None
-        self.dataShapes: Optional[Dict[str, Tuple[int, ...]]] = None
-        self.dataLimits: Optional[Dict[str, Tuple[float, float]]] = None
-        self.dataChanges: Dict[str, bool] = {
-            'dataTypeChanged': False,
-            'dataStructureChanged': False,
-            'dataShapesChanged': False,
-            'dataLimitsChanged': False,
+        self.data: DataDictBase | None = None
+        self.dataType: type[DataDictBase] | None = None
+        self.dataStructure: DataDictBase | None = None
+        self.dataShapes: dict[str, tuple[int, ...]] | None = None
+        self.dataLimits: dict[str, tuple[float, float]] | None = None
+        self.dataChanges: dict[str, bool] = {
+            "dataTypeChanged": False,
+            "dataStructureChanged": False,
+            "dataShapesChanged": False,
+            "dataLimitsChanged": False,
         }
 
     def updatePlot(self) -> None:
         return None
 
-    def setData(self, data: Optional[DataDictBase]) -> None:
+    def setData(self, data: DataDictBase | None) -> None:
         """Set data. Use this to trigger plotting.
 
         :param data: data to be plotted.
@@ -152,7 +155,7 @@ class PlotWidget(QtWidgets.QWidget):
         self.data = data
         self.dataChanges = self.analyzeData(data)
 
-    def analyzeData(self, data: Optional[DataDictBase]) -> Dict[str, bool]:
+    def analyzeData(self, data: DataDictBase | None) -> dict[str, bool]:
         """checks data and compares with previous properties.
 
         :param data: incoming data to compare to already existing data in the object.
@@ -166,14 +169,14 @@ class PlotWidget(QtWidgets.QWidget):
 
         """
         if data is not None:
-            dataType: Optional[Type[DataDictBase]] = type(data)
+            dataType: type[DataDictBase] | None = type(data)
         else:
             dataType = None
 
         if data is None:
-            dataStructure: Optional[DataDictBase] = None
-            dataShapes: Optional[Dict[str, Tuple[int, ...]]] = None
-            dataLimits: Optional[Dict[str, Tuple[Any, Any]]] = None
+            dataStructure: DataDictBase | None = None
+            dataShapes: dict[str, tuple[int, ...]] | None = None
+            dataLimits: dict[str, tuple[Any, Any]] | None = None
         else:
             dataStructure = data.structure(include_meta=False)
             dataShapes = data.shapes()
@@ -183,10 +186,10 @@ class PlotWidget(QtWidgets.QWidget):
                 dataLimits[n] = vals.min(), vals.max()
 
         result = {
-            'dataTypeChanged': dataType != self.dataType,
-            'dataStructureChanged': dataStructure != self.dataStructure,
-            'dataShapesChanged': dataShapes != self.dataShapes,
-            'dataLimitsChanged': dataLimits != self.dataLimits,
+            "dataTypeChanged": dataType != self.dataType,
+            "dataStructureChanged": dataStructure != self.dataStructure,
+            "dataShapesChanged": dataShapes != self.dataShapes,
+            "dataLimitsChanged": dataLimits != self.dataLimits,
         }
 
         self.dataType = dataType
@@ -195,7 +198,7 @@ class PlotWidget(QtWidgets.QWidget):
         self.dataLimits = dataLimits
         return result
 
-    def dataIsComplex(self, dependentName: Optional[str] = None) -> bool:
+    def dataIsComplex(self, dependentName: str | None = None) -> bool:
         """Determine whether our data is complex.
 
         :param dependentName: name of the dependent to check. if `None`, check all.
@@ -215,8 +218,9 @@ class PlotWidget(QtWidgets.QWidget):
         return False
 
 
-def makeFlowchartWithPlot(nodes: List[Tuple[str, Type[Node]]],
-                          plotNodeName: str = 'plot') -> Flowchart:
+def makeFlowchartWithPlot(
+    nodes: list[tuple[str, type[Node]]], plotNodeName: str = "plot"
+) -> Flowchart:
     """create a linear FlowChart terminated with a plot node.
 
     :param nodes: List of Node classes, in the order they are to be arranged.
@@ -274,7 +278,7 @@ class ComplexRepresentation(LabeledOptions):
     log_MagAndPhase = "logMag/Phase"
 
 
-def determinePlotDataType(data: Optional[DataDictBase]) -> PlotDataType:
+def determinePlotDataType(data: DataDictBase | None) -> PlotDataType:
     """
     Analyze input data and determine most likely :class:`PlotDataType`.
 
@@ -324,8 +328,9 @@ def determinePlotDataType(data: Optional[DataDictBase]) -> PlotDataType:
 @dataclass
 class PlotItem:
     """Data class describing a plot item in :class:`.AutoFigureMaker`."""
+
     #: List of data arrays (independents and one dependent)
-    data: List[Union[np.ndarray, np.ma.MaskedArray]]
+    data: list[np.ndarray | np.ma.MaskedArray]
     #: unique ID of the plot item
     id: int
     #: ID of the subplot the item will be plotted in
@@ -333,20 +338,21 @@ class PlotItem:
     #: type of plot data (unknown is typically OK)
     plotDataType: PlotDataType = PlotDataType.unknown
     #: labels of the data arrays
-    labels: Optional[List[str]] = None
+    labels: list[str] | None = None
     #: options to be passed to plotting functions (depends on backend). Could be formatting options, for example.
-    plotOptions: Optional[Dict[str, Any]] = None
+    plotOptions: dict[str, Any] | None = None
     #: return value from the plot command (like matplotlib Artists)
-    plotReturn: Optional[Any] = None
+    plotReturn: Any | None = None
 
 
 @dataclass
 class SubPlot:
     """Data class describing a subplot in a :class:`.AutoFigureMaker`."""
+
     #: ID of the subplot (unique per figure)
     id: int
     #: list of subplot objects (type depends on backend)
-    axes: Optional[List[Any]] = None
+    axes: list[Any] | None = None
 
 
 class AutoFigureMaker:
@@ -377,7 +383,6 @@ class AutoFigureMaker:
     # TODO: similar, but with siblings (imagine Re/Im parts)
 
     def __init__(self) -> None:
-
         #: subplots to create
         self.subPlots: OrderedDictType[int, SubPlot] = OrderedDict()
 
@@ -385,14 +390,16 @@ class AutoFigureMaker:
         self.plotItems: OrderedDictType[int, PlotItem] = OrderedDict()
 
         #: ids of all main plot items (does not contain derived/secondary plot items)
-        self.plotIds: List = []
+        self.plotIds: list = []
 
         #: ids of all plot items, incl those who are 'joined' with 'main' plot items.
-        self.allPlotIds: List = []
+        self.allPlotIds: list = []
 
         #: how to represent complex data.
         #: must be set before adding data to the plot to have an effect.
-        self.complexRepresentation: ComplexRepresentation = ComplexRepresentation.realAndImag
+        self.complexRepresentation: ComplexRepresentation = (
+            ComplexRepresentation.realAndImag
+        )
 
         #: whether to combine 1D traces into one plot
         self.combineTraces: bool = False
@@ -400,10 +407,12 @@ class AutoFigureMaker:
     def __enter__(self) -> "AutoFigureMaker":
         return self
 
-    def __exit__(self, exc_type: Optional[Type[BaseException]],
-                 exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> None:
-
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         self._makeAxes()
         for id in self.subPlots.keys():
             self._makeSubPlot(id)
@@ -424,9 +433,9 @@ class AutoFigureMaker:
         self.formatSubPlot(id)
         return None
 
-    def _splitComplexData(self, plotItem: PlotItem) -> List[PlotItem]:
+    def _splitComplexData(self, plotItem: PlotItem) -> list[PlotItem]:
         if plotItem.labels is None:
-            plotItem.labels = [''] * len(plotItem.data)
+            plotItem.labels = [""] * len(plotItem.data)
         label = plotItem.labels[-1]
 
         if not np.issubsctype(plotItem.data[-1], np.complexfloating):
@@ -435,22 +444,23 @@ class AutoFigureMaker:
         elif self.complexRepresentation is ComplexRepresentation.real:
             plotItem.data[-1] = plotItem.data[-1].real
             assert isinstance(plotItem.labels, list)
-            if label == '':
-                plotItem.labels[-1] = 'Real'
+            if label == "":
+                plotItem.labels[-1] = "Real"
             else:
-                plotItem.labels[-1] = label + ' (Real)'
+                plotItem.labels[-1] = label + " (Real)"
             return [plotItem]
 
-        elif self.complexRepresentation in \
-                [ComplexRepresentation.realAndImag, ComplexRepresentation.realAndImagSeparate]:
-
+        elif self.complexRepresentation in [
+            ComplexRepresentation.realAndImag,
+            ComplexRepresentation.realAndImagSeparate,
+        ]:
             re_data = plotItem.data[-1].real
             im_data = plotItem.data[-1].imag
 
-            if label == '':
-                re_label, im_label = 'Real', 'Imag'
+            if label == "":
+                re_label, im_label = "Real", "Imag"
             else:
-                re_label, im_label = label + ' (Real)', label + ' (Imag)'
+                re_label, im_label = label + " (Real)", label + " (Imag)"
 
             re_plotItem = plotItem
             im_plotItem = deepcopy(re_plotItem)
@@ -459,8 +469,10 @@ class AutoFigureMaker:
             im_plotItem.data[-1] = im_data
             im_plotItem.id = re_plotItem.id + 1
 
-            if self.complexRepresentation == ComplexRepresentation.realAndImagSeparate \
-                    or len(plotItem.data) > 2:
+            if (
+                self.complexRepresentation == ComplexRepresentation.realAndImagSeparate
+                or len(plotItem.data) > 2
+            ):
                 im_plotItem.subPlot = re_plotItem.subPlot + 1
 
             # this is a bit of a silly check (see top of the function -- should certainly be True!).
@@ -476,13 +488,17 @@ class AutoFigureMaker:
             data = plotItem.data[-1]
 
             # this check avoids a numpy ComplexWarning when we're working with MaskedArray (almost always)
-            mag_data = np.ma.abs(data).real if isinstance(data, np.ma.MaskedArray) else np.abs(data)
+            mag_data = (
+                np.ma.abs(data).real
+                if isinstance(data, np.ma.MaskedArray)
+                else np.abs(data)
+            )
             phase_data = np.angle(data)
 
-            if label == '':
-                mag_label, phase_label = '20*log10(Mag)', 'Phase'
+            if label == "":
+                mag_label, phase_label = "20*log10(Mag)", "Phase"
             else:
-                mag_label, phase_label = label + ' 20*log10(Mag)', label + ' (Phase)'
+                mag_label, phase_label = label + " 20*log10(Mag)", label + " (Phase)"
 
             mag_plotItem = plotItem
             phase_plotItem = deepcopy(mag_plotItem)
@@ -505,13 +521,17 @@ class AutoFigureMaker:
             data = plotItem.data[-1]
 
             # this check avoids a numpy ComplexWarning when we're working with MaskedArray (almost always)
-            mag_data = np.ma.abs(data).real if isinstance(data, np.ma.MaskedArray) else np.abs(data)
+            mag_data = (
+                np.ma.abs(data).real
+                if isinstance(data, np.ma.MaskedArray)
+                else np.abs(data)
+            )
             phase_data = np.angle(data)
 
-            if label == '':
-                mag_label, phase_label = 'Mag', 'Phase'
+            if label == "":
+                mag_label, phase_label = "Mag", "Phase"
             else:
-                mag_label, phase_label = label + ' (Mag)', label + ' (Phase)'
+                mag_label, phase_label = label + " (Mag)", label + " (Phase)"
 
             mag_plotItem = plotItem
             phase_plotItem = deepcopy(mag_plotItem)
@@ -562,14 +582,14 @@ class AutoFigureMaker:
                 items[id] = item
         return items
 
-    def subPlotLabels(self, subPlotId: int) -> List[List[str]]:
+    def subPlotLabels(self, subPlotId: int) -> list[list[str]]:
         """Get the data labels for a given subplot.
 
         :param subPlotId: ID of the subplot.
         :return: a list with one element per plot item in the subplot.
             Each element contains a list of the labels for that item.
         """
-        ret: List[List[str]] = []
+        ret: list[list[str]] = []
         items = self.subPlotItems(subPlotId)
         for id, item in items.items():
             if item.labels is not None:
@@ -579,11 +599,14 @@ class AutoFigureMaker:
                     ret[i].append(l)
         return ret
 
-    def addData(self, *data: Union[np.ndarray, np.ma.MaskedArray],
-                join: Optional[int] = None,
-                labels: Optional[List[str]] = None,
-                plotDataType: PlotDataType = PlotDataType.unknown,
-                **plotOptions: Any) -> int:
+    def addData(
+        self,
+        *data: np.ndarray | np.ma.MaskedArray,
+        join: int | None = None,
+        labels: list[str] | None = None,
+        plotDataType: PlotDataType = PlotDataType.unknown,
+        **plotOptions: Any,
+    ) -> int:
         """Add data to the figure.
 
         :param data: data arrays describing the plot (one or more independents, one dependent)
@@ -614,12 +637,13 @@ class AutoFigureMaker:
             subPlotId = self.plotItems[join].subPlot
 
         if labels is None:
-            labels = [''] * len(data)
+            labels = [""] * len(data)
         elif len(labels) < len(data):
-            labels += [''] * (len(data) - len(labels))
+            labels += [""] * (len(data) - len(labels))
 
-        plotItem = PlotItem(list(data), id, subPlotId,
-                            plotDataType, labels, plotOptions)
+        plotItem = PlotItem(
+            list(data), id, subPlotId, plotDataType, labels, plotOptions
+        )
 
         for p in self._splitComplexData(plotItem):
             self.plotItems[p.id] = p
@@ -627,7 +651,7 @@ class AutoFigureMaker:
         self.plotIds.append(id)
         return id
 
-    def previousPlotId(self) -> Optional[int]:
+    def previousPlotId(self) -> int | None:
         """Get the ID of the most recently added plot item.
         :return: the ID.
         """
@@ -649,31 +673,35 @@ class AutoFigureMaker:
             raise ValueError("Plot ID not found.")
 
         subPlotId = self.plotItems[plotId].subPlot
-        itemsInSubPlot = [i for i in self.allPlotIds if self.plotItems[i].subPlot == subPlotId]
+        itemsInSubPlot = [
+            i for i in self.allPlotIds if self.plotItems[i].subPlot == subPlotId
+        ]
         return itemsInSubPlot.index(plotId)
 
-    def plotIdsInSubPlot(self, subPlotId: int) -> List[int]:
+    def plotIdsInSubPlot(self, subPlotId: int) -> list[int]:
         """return all plot IDs in a given subplot
 
         :param subPlotId: ID of the subplot
         :return: list of plot IDs
         """
-        itemsInSubPlot = [i for i in self.allPlotIds if self.plotItems[i].subPlot == subPlotId]
+        itemsInSubPlot = [
+            i for i in self.allPlotIds if self.plotItems[i].subPlot == subPlotId
+        ]
         return itemsInSubPlot
 
-    def dataDimensionsInSubPlot(self, subPlotId: int) -> Dict[int, int]:
+    def dataDimensionsInSubPlot(self, subPlotId: int) -> dict[int, int]:
         """Determine what the data dimensions are in a subplot.
 
         :param subPlotId: ID of the subplot
         :return: dictionary with plot id as key, data dimension (i.e., number of independents) as value.
         """
-        ret: Dict[int, int] = {}
+        ret: dict[int, int] = {}
         for plotId in self.plotIdsInSubPlot(subPlotId):
             ret[plotId] = len(self.plotItems[plotId].data) - 1
         return ret
 
     # Methods to be implemented by inheriting classes
-    def makeSubPlots(self, nSubPlots: int) -> List[Any]:
+    def makeSubPlots(self, nSubPlots: int) -> list[Any]:
         """Generate the subplots. Called after all data has been added.
         Must be implemented by an inheriting class.
 
@@ -702,7 +730,7 @@ class AutoFigureMaker:
         raise NotImplementedError
 
 
-def _generate_auto_dict_key(d: Dict) -> int:
+def _generate_auto_dict_key(d: dict) -> int:
     guess = 0
     while guess in d.keys():
         guess += 1

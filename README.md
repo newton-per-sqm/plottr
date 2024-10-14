@@ -9,7 +9,7 @@ A framework for inspecting data, based on flowcharts from *pyqtgraph*.
 *plottr*'s main aim is to allow the user to define custom data processing flows and plotting.
 A particular use case is data filtering and plotting.
 
-## Documentation: 
+## Documentation:
 https://plottr.readthedocs.io (work in progress...)
 
 # Quickstart
@@ -20,7 +20,7 @@ Plottr is installable from pypi with `pip install plottr`
 
 Plottr requires either the PyQt5 or Pyside2 gui framework.
 To install with PyQt5 or Pyside2 backend you can do
-``pip install plottr[PyQt5]`` or ``pip install plottr[Pyside2]`` 
+``pip install plottr[PyQt5]`` or ``pip install plottr[Pyside2]``
 
 Note that if  you have installed ``pyqt`` from ``(Ana)Conda`` you should not use any of these
 targets but do ``pip install plottr`` or install Plottr from conda forge:
@@ -38,8 +38,8 @@ To install from source: clone the repo, and install using `pip install -e .`
 You can use the `inspectr` tool to get a simple overview over QCoDeS database
 files, and plot datasets contained in the database.
 
-To use: run `plottr-inspectr [--dbpath <path to your .db file>]` 
- 
+To use: run `plottr-inspectr [--dbpath <path to your .db file>]`
+
 As an alternative from the root of the cloned plottr repository, run `python apps/inspectr.py [--dbpath <path to your .db file>]`
 
 For basic instructions, check out the Notebook *Live plotting qcodes data* under `/doc/examples`.
@@ -62,7 +62,7 @@ See the [plottr GitHub Releases page](https://github.com/toolsforexperiments/plo
 
 ## v0.10.0 2022-07-14
 
-### Added 
+### Added
 
 - added a generalized way for fitting data (or similar procedures that generate analysis parameters from datasets) (#293)
 - ... and more, see here https://github.com/toolsforexperiments/plottr/releases/tag/v0.10.0
@@ -169,7 +169,7 @@ See the [plottr GitHub Releases page](https://github.com/toolsforexperiments/plo
 
 ### Added
 
-- Entry points for inspectr (plottr-inspectr) and autoplot (plottr-autoplot-ddh5) 
+- Entry points for inspectr (plottr-inspectr) and autoplot (plottr-autoplot-ddh5)
 - LICENSE file has been added (no change to license of the code)
 - setup.py has been tweeked to ensure that sdist and bdist_wheel packages are generated correctly
 
@@ -193,5 +193,5 @@ See the [plottr GitHub Releases page](https://github.com/toolsforexperiments/plo
 
 ### Changed
 
-- the main repo has now moved to to a different organization: https://github.com/toolsforexperiments/plottr 
+- the main repo has now moved to to a different organization: https://github.com/toolsforexperiments/plottr
   the old repo (https://github.com/data-plottr/plottr) will be kept in sync for a while, but deleted eventually.

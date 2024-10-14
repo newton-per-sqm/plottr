@@ -11,24 +11,23 @@ widget will capture the log and display it.
 
 # TODO: unify with the one from instrumentserver. should maybe go into labcore?
 
-import sys
-from typing import Optional, Union
-from plottr import QtWidgets, QtGui
 import logging
+import sys
 
-__author__ = 'Wolfgang Pfaff'
-__license__ = 'MIT'
+from plottr import QtGui, QtWidgets
+
+__author__ = "Wolfgang Pfaff"
+__license__ = "MIT"
 
 COLORS = {
-    logging.ERROR : QtGui.QColor('red'),
-    logging.WARNING : QtGui.QColor('orange'),
-    logging.INFO : QtGui.QColor('green'),
-    logging.DEBUG : QtGui.QColor('gray'),
-    }
+    logging.ERROR: QtGui.QColor("red"),
+    logging.WARNING: QtGui.QColor("orange"),
+    logging.INFO: QtGui.QColor("green"),
+    logging.DEBUG: QtGui.QColor("gray"),
+}
 
 
 class QLogHandler(logging.Handler):
-
     def __init__(self, parent: QtWidgets.QWidget):
         super().__init__()
         self.widget = QtWidgets.QTextEdit(parent)
@@ -36,7 +35,7 @@ class QLogHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         msg = self.format(record)
-        clr = COLORS.get(record.levelno, QtGui.QColor('black'))
+        clr = COLORS.get(record.levelno, QtGui.QColor("black"))
         self.widget.setTextColor(clr)
         self.widget.append(msg)
         self.widget.verticalScrollBar().setValue(
@@ -49,16 +48,17 @@ class LogWidget(QtWidgets.QWidget):
     A simple logger widget. Uses QLogHandler as handler.
     Does not do much else.
     """
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None,
-                 level: int = logging.INFO):
+
+    def __init__(
+        self, parent: QtWidgets.QWidget | None = None, level: int = logging.INFO
+    ):
         super().__init__(parent)
 
         ### set up the graphical handler
         fmt = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s\n" +
-                "    %(message)s",
-            datefmt='%Y-%m-%d %H:%M:%S',
-            )
+            "%(asctime)s - %(name)s - %(levelname)s\n" + "    %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
         logTextBox = QLogHandler(self)
         logTextBox.setFormatter(fmt)
         logTextBox.setLevel(level)
@@ -79,7 +79,6 @@ class LogWidget(QtWidgets.QWidget):
         self.logger.addHandler(logTextBox)
         self.logger.setLevel(level)
 
-
     def setLevel(self, level: int) -> None:
         self.logger.setLevel(level)
 
@@ -89,12 +88,13 @@ def logDialog(widget: QtWidgets.QWidget) -> QtWidgets.QDialog:
     d = QtWidgets.QDialog()
     d.setLayout(layout)
     layout.addWidget(widget)
-    d.setWindowTitle('Plottr | Log')
+    d.setWindowTitle("Plottr | Log")
     return d
 
 
-def setupLogging(level: int = logging.INFO,
-                 makeDialog: bool = True) -> Union[QtWidgets.QDialog, LogWidget]:
+def setupLogging(
+    level: int = logging.INFO, makeDialog: bool = True
+) -> QtWidgets.QDialog | LogWidget:
     """
     Setup logging for plottr. Creates the widget and handler.
     if makeDialog is True, embed the widget into the dialog.
@@ -109,22 +109,24 @@ def setupLogging(level: int = logging.INFO,
         return w
 
 
-def getLogger(module: str = '') -> logging.Logger:
+def getLogger(module: str = "") -> logging.Logger:
     """
     Return the logger we use within the plottr framework.
     """
-    mod = 'plottr'
-    if module != '':
-        if module.split('.')[0] == 'plottr':
+    mod = "plottr"
+    if module != "":
+        if module.split(".")[0] == "plottr":
             mod = module
         else:
-            mod += f'.{module}'
+            mod += f".{module}"
 
     logger = logging.getLogger(mod)
     return logger
 
 
-def enableStreamHandler(enable: bool = False, level: Union[int,str] = logging.WARNING) -> None:
+def enableStreamHandler(
+    enable: bool = False, level: int | str = logging.WARNING
+) -> None:
     """
     enable/disable output to stderr. Enabling is useful when not
     using the UI logging window.
@@ -141,10 +143,9 @@ def enableStreamHandler(enable: bool = False, level: Union[int,str] = logging.WA
     if enable and not hasStreamHandler:
         streamHandler = logging.StreamHandler(sys.stderr)
         fmt = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s\n" +
-                "    %(message)s",
-            datefmt='%Y-%m-%d %H:%M:%S',
-            )
+            "%(asctime)s - %(name)s - %(levelname)s\n" + "    %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
         streamHandler.setFormatter(fmt)
         streamHandler.setLevel(level)
         logger.addHandler(streamHandler)

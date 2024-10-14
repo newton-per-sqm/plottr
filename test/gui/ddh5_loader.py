@@ -1,7 +1,7 @@
 from plottr import QtWidgets
 from plottr.data import datadict_storage as dds
-from plottr.node.tools import linearFlowchart
 from plottr.gui.tools import widgetDialog
+from plottr.node.tools import linearFlowchart
 
 
 def loader_node(interactive=False):
@@ -11,9 +11,9 @@ def loader_node(interactive=False):
     if not interactive:
         app = QtWidgets.QApplication([])
 
-    fc = linearFlowchart(('loader', dds.DDH5Loader))
-    loader = fc.nodes()['loader']
-    dialog = widgetDialog(loader.ui, 'loader')
+    fc = linearFlowchart(("loader", dds.DDH5Loader))
+    loader = fc.nodes()["loader"]
+    dialog = widgetDialog(loader.ui, "loader")
 
     if not interactive:
         loader.newDataStructure.connect(cb)

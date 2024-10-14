@@ -2,45 +2,46 @@
 plottr/apps/autoplot.py : tools for simple automatic plotting.
 """
 
+import argparse
 import logging
 import os
 import time
-import argparse
-from typing import Union, Tuple, Optional, Type, List, Any, Type
+from typing import Any
+
 from packaging import version
 
-from .. import QtCore, Flowchart, Signal, Slot, QtWidgets, QtGui
-from .. import log as plottrlog
+from .. import Flowchart, QtCore, QtGui, QtWidgets, Signal, Slot
 from ..data.datadict import DataDictBase
 from ..data.datadict_storage import DDH5Loader
 from ..data.qcodes_dataset import QCodesDSLoader
 from ..gui import PlotWindow
-from ..gui.widgets import MonitorIntervalInput, SnapshotWidget
+from ..gui.widgets import MonitorIntervalInput
 from ..node.data_selector import DataSelector
 from ..node.dim_reducer import XYSelector
 from ..node.filter.correct_offset import SubtractAverage
-from ..node.scaleunits import ScaleUnits
 from ..node.grid import DataGridder, GridOption
-from ..node.tools import linearFlowchart
-from ..node.node import Node
 from ..node.histogram import Histogrammer
-from ..plot import PlotNode, makeFlowchartWithPlot, PlotWidget
+from ..node.node import Node
+from ..node.scaleunits import ScaleUnits
+from ..node.tools import linearFlowchart
+from ..plot import PlotNode, PlotWidget, makeFlowchartWithPlot
 from ..plot.mpl.autoplot import AutoPlot as MPLAutoPlot
 from ..plot.pyqtgraph.autoplot import AutoPlot as PGAutoPlot
 from ..utils.misc import unwrap_optional
 
-__author__ = 'Wolfgang Pfaff'
-__license__ = 'MIT'
+__author__ = "Wolfgang Pfaff"
+__license__ = "MIT"
 
 
 # TODO: * separate logging window
 
-LOGGER = logging.getLogger('plottr.apps.autoplot')
+LOGGER = logging.getLogger("plottr.apps.autoplot")
 
 
-def autoplot(inputData: Union[None, DataDictBase] = None,
-             plotWidgetClass: Optional[Type[PlotWidget]] = None) \
-        -> Tuple[Flowchart, 'AutoPlotMainWindow']:
+def autoplot(
+    inputData: None | DataDictBase = None,
+    plotWidgetClass: type[PlotWidget] | None = None,
+) -> tuple[Flowchart, "AutoPlotMainWindow"]:
     """
     Sets up a simple flowchart consisting of a data selector, gridder,
     an xy-axes selector, and creates a GUI together with an autoplot
@@ -49,22 +50,23 @@ def autoplot(inputData: Union[None, DataDictBase] = None,
     :returns: the flowchart object and the dialog widget
     """
 
-    nodes: List[Tuple[str, Type[Node]]] = [
-        ('Data selection', DataSelector),
-        ('Grid', DataGridder),
-        ('Dimension assignment', XYSelector),
+    nodes: list[tuple[str, type[Node]]] = [
+        ("Data selection", DataSelector),
+        ("Grid", DataGridder),
+        ("Dimension assignment", XYSelector),
     ]
 
     widgetOptions = {
-        "Data selection": dict(visible=True,
-                               dockArea=QtCore.Qt.TopDockWidgetArea),
-        "Dimension assignment": dict(visible=True,
-                                     dockArea=QtCore.Qt.TopDockWidgetArea),
+        "Data selection": dict(visible=True, dockArea=QtCore.Qt.TopDockWidgetArea),
+        "Dimension assignment": dict(
+            visible=True, dockArea=QtCore.Qt.TopDockWidgetArea
+        ),
     }
 
     fc = makeFlowchartWithPlot(nodes)
-    win = AutoPlotMainWindow(fc, widgetOptions=widgetOptions,
-                             plotWidgetClass=plotWidgetClass)
+    win = AutoPlotMainWindow(
+        fc, widgetOptions=widgetOptions, plotWidgetClass=plotWidgetClass
+    )
     win.show()
 
     if inputData is not None:
@@ -83,12 +85,12 @@ class UpdateToolBar(QtWidgets.QToolBar):
     #: Signal emitted after each trigger interval
     trigger = Signal()
 
-    def __init__(self, name: str, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, name: str, parent: QtWidgets.QWidget | None = None):
         super().__init__(name, parent)
 
         self.monitorInput = MonitorIntervalInput()
         self.monitorInput.spin.setMaximum(1000)
-        self.monitorInput.setToolTip('Set to 0 for disabling triggering')
+        self.monitorInput.setToolTip("Set to 0 for disabling triggering")
         self.monitorInput.intervalChanged.connect(self.setMonitorInterval)
         self.addWidget(self.monitorInput)
 
@@ -101,7 +103,7 @@ class UpdateToolBar(QtWidgets.QToolBar):
         Is called whenever the monitor timer triggers, and emit the
         :attr:`trigger` Signal.
         """
-        LOGGER.debug('Emit trigger')
+        LOGGER.debug("Emit trigger")
         self.trigger.emit()
 
     @Slot(float)
@@ -126,20 +128,20 @@ class UpdateToolBar(QtWidgets.QToolBar):
 
 
 class AutoPlotMainWindow(PlotWindow):
-
-    def __init__(self, fc: Flowchart,
-                 parent: Optional[QtWidgets.QMainWindow] = None,
-                 monitor: bool = False,
-                 monitorInterval: Union[float, None] = None,
-                 loaderName: Optional[str] = None,
-                 plotWidgetClass: Optional[Type[PlotWidget]] = None,
-                 **kwargs: Any):
-
-        super().__init__(parent, fc=fc, plotWidgetClass=plotWidgetClass,
-                         **kwargs)
+    def __init__(
+        self,
+        fc: Flowchart,
+        parent: QtWidgets.QMainWindow | None = None,
+        monitor: bool = False,
+        monitorInterval: float | None = None,
+        loaderName: str | None = None,
+        plotWidgetClass: type[PlotWidget] | None = None,
+        **kwargs: Any,
+    ):
+        super().__init__(parent, fc=fc, plotWidgetClass=plotWidgetClass, **kwargs)
 
         self.fc = fc
-        self.loaderNode: Optional[Node] = None
+        self.loaderNode: Node | None = None
         if loaderName is not None:
             self.loaderNode = fc.nodes()[loaderName]
 
@@ -156,17 +158,17 @@ class AutoPlotMainWindow(PlotWindow):
 
         # menu bar
         self.menu = self.menuBar()
-        self.fileMenu = self.menu.addMenu('&Data')
+        self.fileMenu = self.menu.addMenu("&Data")
 
         if self.loaderNode is not None:
-            refreshAction = QtWidgets.QAction('&Refresh', self)
-            refreshAction.setShortcut('R')
+            refreshAction = QtWidgets.QAction("&Refresh", self)
+            refreshAction.setShortcut("R")
             refreshAction.triggered.connect(self.refreshData)
             self.fileMenu.addAction(refreshAction)
 
         # add monitor if needed
         if monitor:
-            self.monitorToolBar: Optional[UpdateToolBar] = UpdateToolBar('Monitor data')
+            self.monitorToolBar: UpdateToolBar | None = UpdateToolBar("Monitor data")
             self.addToolBar(self.monitorToolBar)
             self.monitorToolBar.trigger.connect(self.refreshData)
             if monitorInterval is not None:
@@ -201,9 +203,9 @@ class AutoPlotMainWindow(PlotWindow):
     @Slot()
     def onChangedLoaderData(self) -> None:
         assert self.loaderNode is not None
-        data = self.loaderNode.outputValues()['dataOut']
+        data = self.loaderNode.outputValues()["dataOut"]
         if data is not None:
-            self.setDefaults(self.loaderNode.outputValues()['dataOut'])
+            self.setDefaults(self.loaderNode.outputValues()["dataOut"])
 
     @Slot()
     def refreshData(self) -> None:
@@ -211,7 +213,6 @@ class AutoPlotMainWindow(PlotWindow):
         Refresh the dataset by calling `update' on the dataset loader node.
         """
         if self.loaderNode is not None:
-
             self.loaderNode.update()
             self.showTime()
 
@@ -243,14 +244,14 @@ class AutoPlotMainWindow(PlotWindow):
         axes = data.axes(selected)
         drs = dict()
         if len(axes) >= 2:
-            drs = {axes[-1]: 'x-axis', axes[-2]: 'y-axis'}
+            drs = {axes[-1]: "x-axis", axes[-2]: "y-axis"}
         if len(axes) == 1:
-            drs = {axes[0]: 'x-axis'}
+            drs = {axes[0]: "x-axis"}
 
         try:
-            self.fc.nodes()['Data selection'].selectedData = selected
-            self.fc.nodes()['Grid'].grid = GridOption.guessShape, {}
-            self.fc.nodes()['Dimension assignment'].dimensionRoles = drs
+            self.fc.nodes()["Data selection"].selectedData = selected
+            self.fc.nodes()["Grid"].grid = GridOption.guessShape, {}
+            self.fc.nodes()["Dimension assignment"].dimensionRoles = drs
         # FIXME: this is maybe a bit excessive, but trying to set all the defaults
         #   like this can result in many types of errors.
         #   a better approach would be to inspect the data better and make sure
@@ -269,10 +270,13 @@ class QCAutoPlotMainWindow(AutoPlotMainWindow):
     dataset.
     """
 
-    def __init__(self, fc: Flowchart,
-                 parent: Optional[QtWidgets.QMainWindow] = None,
-                 pathAndId: Optional[Tuple[str, int]] = None, **kw: Any):
-
+    def __init__(
+        self,
+        fc: Flowchart,
+        parent: QtWidgets.QMainWindow | None = None,
+        pathAndId: tuple[str, int] | None = None,
+        **kw: Any,
+    ):
         super().__init__(fc, parent, **kw)
 
         windowTitle = "Plottr | QCoDeS autoplot"
@@ -286,23 +290,23 @@ class QCAutoPlotMainWindow(AutoPlotMainWindow):
             self.loaderNode.pathAndId = pathAndId
 
         if self.loaderNode is not None and self.loaderNode.nLoadedRecords > 0:
-            self.setDefaults(self.loaderNode.outputValues()['dataOut'])
+            self.setDefaults(self.loaderNode.outputValues()["dataOut"])
             self._initialized = True
 
     def setDefaults(self, data: DataDictBase) -> None:
         super().setDefaults(data)
         import qcodes as qc
-        qcodes_support = (version.parse(qc.__version__) >=
-                          version.parse("0.20.0"))
-        if data.meta_val('qcodes_shape') is not None and qcodes_support:
-            self.fc.nodes()['Grid'].grid = GridOption.metadataShape, {}
+
+        qcodes_support = version.parse(qc.__version__) >= version.parse("0.20.0")
+        if data.meta_val("qcodes_shape") is not None and qcodes_support:
+            self.fc.nodes()["Grid"].grid = GridOption.metadataShape, {}
         else:
-            self.fc.nodes()['Grid'].grid = GridOption.guessShape, {}
+            self.fc.nodes()["Grid"].grid = GridOption.guessShape, {}
 
 
-def autoplotQcodesDataset(log: bool = False,
-                          pathAndId: Union[Tuple[str, int], None] = None) \
-        -> Tuple[Flowchart, QCAutoPlotMainWindow]:
+def autoplotQcodesDataset(
+    log: bool = False, pathAndId: tuple[str, int] | None = None
+) -> tuple[Flowchart, QCAutoPlotMainWindow]:
     """
     Sets up a simple flowchart consisting of a data selector,
     an xy-axes selector, and creates a GUI together with an autoplot
@@ -312,69 +316,74 @@ def autoplotQcodesDataset(log: bool = False,
     """
 
     fc = linearFlowchart(
-        ('Data loader', QCodesDSLoader),
-        ('Data selection', DataSelector),
-        ('Grid', DataGridder),
-        ('Dimension assignment', XYSelector),
-        ('Subtract average', SubtractAverage),
-        ('Scale units', ScaleUnits),
-        ('plot', PlotNode)
+        ("Data loader", QCodesDSLoader),
+        ("Data selection", DataSelector),
+        ("Grid", DataGridder),
+        ("Dimension assignment", XYSelector),
+        ("Subtract average", SubtractAverage),
+        ("Scale units", ScaleUnits),
+        ("plot", PlotNode),
     )
 
     widgetOptions = {
-        "Data selection": dict(visible=True,
-                               dockArea=QtCore.Qt.TopDockWidgetArea),
-        "Dimension assignment": dict(visible=True,
-                                     dockArea=QtCore.Qt.TopDockWidgetArea),
+        "Data selection": dict(visible=True, dockArea=QtCore.Qt.TopDockWidgetArea),
+        "Dimension assignment": dict(
+            visible=True, dockArea=QtCore.Qt.TopDockWidgetArea
+        ),
     }
 
-    win = QCAutoPlotMainWindow(fc, pathAndId=pathAndId,
-                               widgetOptions=widgetOptions,
-                               monitor=True,
-                               loaderName='Data loader')
+    win = QCAutoPlotMainWindow(
+        fc,
+        pathAndId=pathAndId,
+        widgetOptions=widgetOptions,
+        monitor=True,
+        loaderName="Data loader",
+    )
     win.show()
 
     return fc, win
 
 
-def autoplotDDH5(filepath: str = '',
-                 groupname: str = 'data',
-                 plotWidgetClass: Optional[Type[PlotWidget]] = None) \
-        -> Tuple[Flowchart, AutoPlotMainWindow]:
-
+def autoplotDDH5(
+    filepath: str = "",
+    groupname: str = "data",
+    plotWidgetClass: type[PlotWidget] | None = None,
+) -> tuple[Flowchart, AutoPlotMainWindow]:
     fc = linearFlowchart(
-        ('Data loader', DDH5Loader),
-        ('Data selection', DataSelector),
-        ('Grid', DataGridder),
-        ('Histogram', Histogrammer),
-        ('Dimension assignment', XYSelector),
-        ('plot', PlotNode)
+        ("Data loader", DDH5Loader),
+        ("Data selection", DataSelector),
+        ("Grid", DataGridder),
+        ("Histogram", Histogrammer),
+        ("Dimension assignment", XYSelector),
+        ("plot", PlotNode),
     )
 
     widgetOptions = {
-        "Data selection": dict(visible=True,
-                               dockArea=QtCore.Qt.TopDockWidgetArea),
-        "Histogram": dict(visible=False,
-                          dockArea=QtCore.Qt.TopDockWidgetArea),
-        "Dimension assignment": dict(visible=True,
-                                     dockArea=QtCore.Qt.TopDockWidgetArea),
+        "Data selection": dict(visible=True, dockArea=QtCore.Qt.TopDockWidgetArea),
+        "Histogram": dict(visible=False, dockArea=QtCore.Qt.TopDockWidgetArea),
+        "Dimension assignment": dict(
+            visible=True, dockArea=QtCore.Qt.TopDockWidgetArea
+        ),
     }
 
-    win = AutoPlotMainWindow(fc, loaderName='Data loader',
-                             widgetOptions=widgetOptions,
-                             monitor=True,
-                             monitorInterval=0.0,
-                             plotWidgetClass=plotWidgetClass)
+    win = AutoPlotMainWindow(
+        fc,
+        loaderName="Data loader",
+        widgetOptions=widgetOptions,
+        monitor=True,
+        monitorInterval=0.0,
+        plotWidgetClass=plotWidgetClass,
+    )
     win.show()
 
-    fc.nodes()['Data loader'].filepath = filepath
-    fc.nodes()['Data loader'].groupname = groupname
+    fc.nodes()["Data loader"].filepath = filepath
+    fc.nodes()["Data loader"].groupname = groupname
     win.refreshData()
 
     return fc, win
 
 
-def autoplotDDH5App(*args: Any) -> Tuple[Flowchart, AutoPlotMainWindow]:
+def autoplotDDH5App(*args: Any) -> tuple[Flowchart, AutoPlotMainWindow]:
     filepath = args[0][0]
     groupname = args[0][1]
     if len(args[0]) > 2 and args[0][2] == "matplotlib":
@@ -393,13 +402,9 @@ def main(f: str, g: str) -> int:
 
 
 def script() -> None:
-    parser = argparse.ArgumentParser(
-        description='plottr autoplot .dd.h5 files.'
-    )
-    parser.add_argument('--filepath', help='path to .dd.h5 file',
-                        default='')
-    parser.add_argument('--groupname', help='group in the hdf5 file',
-                        default='data')
+    parser = argparse.ArgumentParser(description="plottr autoplot .dd.h5 files.")
+    parser.add_argument("--filepath", help="path to .dd.h5 file", default="")
+    parser.add_argument("--groupname", help="group in the hdf5 file", default="data")
     args = parser.parse_args()
 
     main(args.filepath, args.groupname)

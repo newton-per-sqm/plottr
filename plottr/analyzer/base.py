@@ -1,16 +1,10 @@
-from typing import Tuple, Any, Optional, Union, Dict, List
 from collections import OrderedDict
-from dataclasses import dataclass
-from pathlib import Path
-import json
+from typing import Any
 
 import numpy as np
-from matplotlib import pyplot as plt
-import lmfit
 
 
 class Parameter:
-
     def __init__(self, name: str, value: Any = None, **kw: Any):
         self.name = name
         self.value = value
@@ -30,9 +24,8 @@ class Parameters(OrderedDict):
         self[name] = Parameter(name, **kw)
 
 
-class AnalysisResult(object):
-
-    def __init__(self, parameters: Dict[str, Union[Dict[str, Any], Any]]):
+class AnalysisResult:
+    def __init__(self, parameters: dict[str, dict[str, Any] | Any]):
         self.params = Parameters()
         for k, v in parameters.items():
             if isinstance(v, dict):
@@ -41,27 +34,26 @@ class AnalysisResult(object):
                 self.params.add(k, value=v)
 
     def eval(self, *args: Any, **kwargs: Any) -> np.ndarray:
-        """Analysis types that produce data (like filters or fits) should implement this.
-        """
+        """Analysis types that produce data (like filters or fits) should implement this."""
         raise NotImplementedError
 
-    def params_to_dict(self) -> Dict[str, Any]:
+    def params_to_dict(self) -> dict[str, Any]:
         """Get all analysis parameters.
         Returns a dictionary that contains one key per parameter (its name).
         Each value contains all attributes of the parameter object, except
         those whose names start with `_` and those that are callable.
         """
-        ret: Dict[str, Any] = {}
+        ret: dict[str, Any] = {}
         for name, param in self.params.items():
             ret[name] = {}
             for n in dir(param):
                 attr = getattr(param, n)
-                if n[0] != '_' and not callable(attr):
+                if n[0] != "_" and not callable(attr):
                     ret[name][n] = attr
         return ret
 
 
-class Analysis(object):
+class Analysis:
     """Basic analysis object.
 
     Parameters
@@ -73,14 +65,20 @@ class Analysis(object):
         a 1d array of data
     """
 
-    def __init__(self, coordinates: Union[Tuple[np.ndarray, ...], np.ndarray],
-                 data: np.ndarray):
-        """Constructor of `Analysis`. """
+    def __init__(
+        self, coordinates: tuple[np.ndarray, ...] | np.ndarray, data: np.ndarray
+    ):
+        """Constructor of `Analysis`."""
         self.coordinates = coordinates
         self.data = data
 
-    def analyze(self, coordinates: Union[Tuple[np.ndarray, ...], np.ndarray], data: np.ndarray, *args: Any,
-                **kwargs: Any) -> AnalysisResult:
+    def analyze(
+        self,
+        coordinates: tuple[np.ndarray, ...] | np.ndarray,
+        data: np.ndarray,
+        *args: Any,
+        **kwargs: Any,
+    ) -> AnalysisResult:
         """Needs to be implemented by each inheriting class."""
         raise NotImplementedError
 
@@ -92,4 +90,3 @@ class Analysis(object):
 #             data: np.ndarray, **kwarg: Any) -> AnalysisResult:
 #     analysis = analysis_class(coordinates, data)
 #     return analysis.run(**kwarg)
-

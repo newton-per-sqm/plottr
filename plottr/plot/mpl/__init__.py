@@ -39,14 +39,16 @@ This module looks for a file `plottr_default.mplstyle` in the plottr config
 directories and applies it to matplotlib plots using `pyplot.style.use`.
 
 """
+
 import logging
 
-from matplotlib import rcParams, colormaps, pyplot as plt
+from matplotlib import colormaps
+from matplotlib import pyplot as plt
+from matplotlib import rcParams
 
 from plottr import configFiles
+
 from .autoplot import AutoPlot, FigureMaker
 from .widgets import MPLPlot, MPLPlotWidget
 
-
 logger = logging.getLogger(__name__)
-

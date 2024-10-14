@@ -12,35 +12,41 @@ runs contained in the database. It does not to any handling or loading of
 data. it relies on the public qcodes API to get its information.
 """
 
-import os
-import time
-import sys
 import argparse
 import logging
-from typing import Optional, Sequence, List, Dict, Iterable, Union, cast, Tuple, Mapping
+import os
+import sys
+import time
+from collections.abc import Iterable, Mapping, Sequence
+from typing import cast
 
+import pandas
+from numpy import rint
 from typing_extensions import TypedDict
 
-from numpy import rint
-import pandas
-
-from plottr import QtCore, QtWidgets, Signal, Slot, QtGui, Flowchart
+from plottr import Flowchart, QtCore, QtGui, QtWidgets, Signal, Slot
+from plottr.gui.widgets import (
+    FormLayoutWrapper,
+    MonitorIntervalInput,
+    dictToTreeWidgetItems,
+)
 
 from .. import log as plottrlog
-from ..data.qcodes_dataset import (get_runs_from_db_as_dataframe,
-                                   get_ds_structure, load_dataset_from)
-from plottr.gui.widgets import MonitorIntervalInput, FormLayoutWrapper, dictToTreeWidgetItems
+from ..data.qcodes_dataset import (
+    get_ds_structure,
+    get_runs_from_db_as_dataframe,
+    load_dataset_from,
+)
+from .autoplot import QCAutoPlotMainWindow, autoplotQcodesDataset
 
-from .autoplot import autoplotQcodesDataset, QCAutoPlotMainWindow
+__author__ = "Wolfgang Pfaff"
+__license__ = "MIT"
 
-
-__author__ = 'Wolfgang Pfaff'
-__license__ = 'MIT'
-
-LOGGER = plottrlog.getLogger('plottr.apps.inspectr')
+LOGGER = plottrlog.getLogger("plottr.apps.inspectr")
 
 
 ### Database inspector tool
+
 
 class DateList(QtWidgets.QListWidget):
     """Displays a list of dates for which there are runs in the database."""
@@ -48,7 +54,7 @@ class DateList(QtWidgets.QListWidget):
     datesSelected = Signal(list)
     fileDropped = Signal(str)
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
 
         self.setAcceptDrops(True)
@@ -99,11 +105,11 @@ class DateList(QtWidgets.QListWidget):
         url = event.mimeData().urls()[0].toLocalFile()
         self.fileDropped.emit(url)
 
-    def mimeTypes(self) -> List[str]:
-        return ([
-            'text/uri-list',
-            'application/x-qabstractitemmodeldatalist',
-    ])
+    def mimeTypes(self) -> list[str]:
+        return [
+            "text/uri-list",
+            "application/x-qabstractitemmodeldatalist",
+        ]
 
 
 class SortableTreeWidgetItem(QtWidgets.QTreeWidgetItem):
@@ -111,6 +117,7 @@ class SortableTreeWidgetItem(QtWidgets.QTreeWidgetItem):
     QTreeWidgetItem with an overridden comparator that sorts numerical values
     as numbers instead of sorting them alphabetically.
     """
+
     def __init__(self, strings: Iterable[str]):
         super().__init__(strings)
 
@@ -127,13 +134,23 @@ class SortableTreeWidgetItem(QtWidgets.QTreeWidgetItem):
 class RunList(QtWidgets.QTreeWidget):
     """Shows the list of runs for a given date selection."""
 
-    cols = ['Run ID', 'Tag', 'Experiment', 'Sample', 'Name', 'Started', 'Completed', 'Records', 'GUID']
-    tag_dict = {'': '', 'star': '⭐', 'cross': '❌'}
+    cols = [
+        "Run ID",
+        "Tag",
+        "Experiment",
+        "Sample",
+        "Name",
+        "Started",
+        "Completed",
+        "Records",
+        "GUID",
+    ]
+    tag_dict = {"": "", "star": "⭐", "cross": "❌"}
 
     runSelected = Signal(int)
     runActivated = Signal(int)
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
 
         self.setColumnCount(len(self.cols))
@@ -158,46 +175,58 @@ class RunList(QtWidgets.QTreeWidget):
         copy_action = menu.addAction(copy_icon, "Copy")
 
         window = cast(QCodesDBInspector, self.window())
-        starAction: QtWidgets.QAction = window.starAction # type: ignore[has-type]
+        starAction: QtWidgets.QAction = window.starAction  # type: ignore[has-type]
 
-        starAction.setText('Star' if current_tag_char != self.tag_dict['star'] else 'Unstar')
+        starAction.setText(
+            "Star" if current_tag_char != self.tag_dict["star"] else "Unstar"
+        )
         menu.addAction(starAction)
 
-        crossAction: QtWidgets.QAction = window.crossAction # type: ignore[has-type]
-        crossAction.setText('Cross' if current_tag_char != self.tag_dict['cross'] else 'Uncross')
+        crossAction: QtWidgets.QAction = window.crossAction  # type: ignore[has-type]
+        crossAction.setText(
+            "Cross" if current_tag_char != self.tag_dict["cross"] else "Uncross"
+        )
         menu.addAction(crossAction)
 
         action = menu.exec_(self.mapToGlobal(position))
         if action == copy_action:
-            QtWidgets.QApplication.clipboard().setText(item.text(
-                model_index.column()))
+            QtWidgets.QApplication.clipboard().setText(item.text(model_index.column()))
 
     def addRun(self, runId: int, **vals: str) -> None:
         lst = [str(runId)]
-        tag = vals.get('inspectr_tag', '')
-        lst.append(self.tag_dict.get(tag, tag))  # if the tag is not in tag_dict, display in text
-        lst.append(vals.get('experiment', ''))
-        lst.append(vals.get('sample', ''))
-        lst.append(vals.get('name', ''))
-        lst.append(vals.get('started_date', '') + ' ' + vals.get('started_time', ''))
-        lst.append(vals.get('completed_date', '') + ' ' + vals.get('completed_time', ''))
-        lst.append(str(vals.get('records', '')))
-        lst.append(vals.get('guid', ''))
+        tag = vals.get("inspectr_tag", "")
+        lst.append(
+            self.tag_dict.get(tag, tag)
+        )  # if the tag is not in tag_dict, display in text
+        lst.append(vals.get("experiment", ""))
+        lst.append(vals.get("sample", ""))
+        lst.append(vals.get("name", ""))
+        lst.append(vals.get("started_date", "") + " " + vals.get("started_time", ""))
+        lst.append(
+            vals.get("completed_date", "") + " " + vals.get("completed_time", "")
+        )
+        lst.append(str(vals.get("records", "")))
+        lst.append(vals.get("guid", ""))
 
         item = SortableTreeWidgetItem(lst)
         self.addTopLevelItem(item)
 
-    def setRuns(self, selection: Mapping[int, Mapping[str, str]], show_only_star: bool, show_also_cross: bool) -> None:
+    def setRuns(
+        self,
+        selection: Mapping[int, Mapping[str, str]],
+        show_only_star: bool,
+        show_also_cross: bool,
+    ) -> None:
         self.clear()
 
         # disable sorting before inserting values to avoid performance hit
         self.setSortingEnabled(False)
 
         for runId, record in selection.items():
-            tag = record.get('inspectr_tag', '')
-            if show_only_star and tag == '':
+            tag = record.get("inspectr_tag", "")
+            if show_only_star and tag == "":
                 continue
-            elif show_also_cross or tag != 'cross':
+            elif show_also_cross or tag != "cross":
                 self.addRun(runId, **record)
 
         self.setSortingEnabled(True)
@@ -206,7 +235,6 @@ class RunList(QtWidgets.QTreeWidget):
             self.resizeColumnToContents(i)
 
     def updateRuns(self, selection: Mapping[int, Mapping[str, str]]) -> None:
-
         run_added = False
         for runId, record in selection.items():
             item = self.findItems(str(runId), QtCore.Qt.MatchExactly)
@@ -215,17 +243,19 @@ class RunList(QtWidgets.QTreeWidget):
                 self.addRun(runId, **record)
                 run_added = True
             elif len(item) == 1:
-                completed = record.get('completed_date', '') + ' ' + record.get(
-                    'completed_time', '')
+                completed = (
+                    record.get("completed_date", "")
+                    + " "
+                    + record.get("completed_time", "")
+                )
                 if completed != item[0].text(6):
                     item[0].setText(6, completed)
 
-                num_records = str(record.get('records', ''))
+                num_records = str(record.get("records", ""))
                 if num_records != item[0].text(7):
                     item[0].setText(7, num_records)
             else:
-                raise RuntimeError(f"More than one runs found with runId: "
-                                   f"{runId}")
+                raise RuntimeError(f"More than one runs found with runId: " f"{runId}")
 
         if run_added:
             self.setSortingEnabled(True)
@@ -254,14 +284,14 @@ class RunInfo(QtWidgets.QTreeWidget):
     a tree view of that dictionary and display that.
     """
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
 
-        self.setHeaderLabels(['Key', 'Value'])
+        self.setHeaderLabels(["Key", "Value"])
         self.setColumnCount(2)
 
     @Slot(dict)
-    def setInfo(self, infoDict: Dict[str, Union[dict, str]]) -> None:
+    def setInfo(self, infoDict: dict[str, dict | str]) -> None:
         self.clear()
 
         items = dictToTreeWidgetItems(infoDict)
@@ -280,6 +310,7 @@ class LoadDBProcess(QtCore.QObject):
     It's good to have this in a separate thread because it can be a bit slow
     for large databases.
     """
+
     dbdfLoaded = Signal(object)
     pathSet = Signal()
 
@@ -305,30 +336,31 @@ class QCodesDBInspector(QtWidgets.QMainWindow):
     #: run to the widget that displays the information
     _sendInfo = Signal(dict)
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None,
-                 dbPath: Optional[str] = None):
+    def __init__(
+        self, parent: QtWidgets.QWidget | None = None, dbPath: str | None = None
+    ):
         """Constructor for :class:`QCodesDBInspector`."""
         super().__init__(parent)
 
-        self._plotWindows: Dict[int, WindowDict] = {}
+        self._plotWindows: dict[int, WindowDict] = {}
 
         self.filepath = dbPath
-        self.dbdf: Optional[pandas.DataFrame] = None
+        self.dbdf: pandas.DataFrame | None = None
         self.monitor = QtCore.QTimer()
 
         # flag for determining what has been loaded so far.
         # * None: nothing opened yet.
         # * -1: empty DS open.
         # * any value > 0: run ID from the most recent loading.
-        self.latestRunId: Optional[int] = None
+        self.latestRunId: int | None = None
 
-        self.setWindowTitle('Plottr | QCoDeS dataset inspectr')
+        self.setWindowTitle("Plottr | QCoDeS dataset inspectr")
 
         ### GUI elements
 
         # Main Selection widgets
         self.dateList = DateList()
-        self._selected_dates: Tuple[str, ...] = ()
+        self._selected_dates: tuple[str, ...] = ()
         self.runList = RunList()
         self.runInfo = RunInfo()
 
@@ -349,59 +381,59 @@ class QCodesDBInspector(QtWidgets.QMainWindow):
         self.setStatusBar(self.status)
 
         # toolbar
-        self.toolbar = self.addToolBar('Data monitoring')
+        self.toolbar = self.addToolBar("Data monitoring")
 
         # toolbar item: monitor interval
         self.monitorInput = MonitorIntervalInput()
-        self.monitorInput.setToolTip('Set to 0 for disabling')
+        self.monitorInput.setToolTip("Set to 0 for disabling")
         self.monitorInput.intervalChanged.connect(self.setMonitorInterval)
         self.toolbar.addWidget(self.monitorInput)
 
         self.toolbar.addSeparator()
 
         # toolbar item: auto-launch plotting
-        self.autoLaunchPlots = FormLayoutWrapper([
-            ('Auto-plot new', QtWidgets.QCheckBox())
-        ])
+        self.autoLaunchPlots = FormLayoutWrapper(
+            [("Auto-plot new", QtWidgets.QCheckBox())]
+        )
         tt = "If checked, and automatic refresh is running, "
         tt += " launch plotting window for new datasets automatically."
         self.autoLaunchPlots.setToolTip(tt)
         self.toolbar.addWidget(self.autoLaunchPlots)
 
-        self.showOnlyStarAction = self.toolbar.addAction(RunList.tag_dict['star'])
-        self.showOnlyStarAction.setToolTip('Show only starred runs')
+        self.showOnlyStarAction = self.toolbar.addAction(RunList.tag_dict["star"])
+        self.showOnlyStarAction.setToolTip("Show only starred runs")
         self.showOnlyStarAction.setCheckable(True)
         self.showOnlyStarAction.triggered.connect(self.updateRunList)
-        self.showAlsoCrossAction = self.toolbar.addAction(RunList.tag_dict['cross'])
-        self.showAlsoCrossAction.setToolTip('Show also crossed runs')
+        self.showAlsoCrossAction = self.toolbar.addAction(RunList.tag_dict["cross"])
+        self.showAlsoCrossAction.setToolTip("Show also crossed runs")
         self.showAlsoCrossAction.setCheckable(True)
         self.showAlsoCrossAction.triggered.connect(self.updateRunList)
 
         # menu bar
         menu = self.menuBar()
-        fileMenu = menu.addMenu('&File')
+        fileMenu = menu.addMenu("&File")
 
         # action: load db file
-        loadAction = QtWidgets.QAction('&Load', self)
-        loadAction.setShortcut('Ctrl+L')
+        loadAction = QtWidgets.QAction("&Load", self)
+        loadAction.setShortcut("Ctrl+L")
         loadAction.triggered.connect(self.loadDB)
         fileMenu.addAction(loadAction)
 
         # action: updates from the db file
-        refreshAction = QtWidgets.QAction('&Refresh', self)
-        refreshAction.setShortcut('R')
+        refreshAction = QtWidgets.QAction("&Refresh", self)
+        refreshAction.setShortcut("R")
         refreshAction.triggered.connect(self.refreshDB)
         fileMenu.addAction(refreshAction)
 
         # action: star/unstar the selected run
         self.starAction = QtWidgets.QAction()
-        self.starAction.setShortcut('Ctrl+Alt+S')
+        self.starAction.setShortcut("Ctrl+Alt+S")
         self.starAction.triggered.connect(self.starSelectedRun)
         self.addAction(self.starAction)
 
         # action: cross/uncross the selected run
         self.crossAction = QtWidgets.QAction()
-        self.crossAction.setShortcut('Ctrl+Alt+X')
+        self.crossAction.setShortcut("Ctrl+Alt+X")
         self.crossAction.triggered.connect(self.crossSelectedRun)
         self.addAction(self.crossAction)
 
@@ -446,7 +478,7 @@ class QCodesDBInspector(QtWidgets.QMainWindow):
             self.monitor.stop()
 
         for runId, info in self._plotWindows.items():
-            info['window'].close()
+            info["window"].close()
 
     @Slot()
     def showDBPath(self) -> None:
@@ -469,16 +501,16 @@ class QCodesDBInspector(QtWidgets.QMainWindow):
 
         path, _fltr = QtWidgets.QFileDialog.getOpenFileName(
             self,
-            'Open qcodes .db file',
+            "Open qcodes .db file",
             curdir,
-            'qcodes .db files (*.db);;all files (*.*)',
-            )
+            "qcodes .db files (*.db);;all files (*.*)",
+        )
 
         if path:
             LOGGER.info(f"Opening: {path}")
             self.loadFullDB(path=path)
 
-    def loadFullDB(self, path: Optional[str] = None) -> None:
+    def loadFullDB(self, path: str | None = None) -> None:
         if path is not None and path != self.filepath:
             self.filepath = path
 
@@ -492,21 +524,24 @@ class QCodesDBInspector(QtWidgets.QMainWindow):
 
     def DBLoaded(self, dbdf: pandas.DataFrame) -> None:
         if self.dbdf is not None and dbdf.equals(self.dbdf):
-            LOGGER.debug('DB reloaded with no changes. Skipping update')
+            LOGGER.debug("DB reloaded with no changes. Skipping update")
             return None
         self.dbdf = dbdf
         self.dbdfUpdated.emit()
         self.dateList.sendSelectedDates()
-        LOGGER.debug('DB reloaded')
+        LOGGER.debug("DB reloaded")
 
         if self.latestRunId is not None:
             idxs = self.dbdf.index.values
             newIdxs = idxs[idxs > self.latestRunId]
 
-            if self.monitor.isActive() and self.autoLaunchPlots.elements['Auto-plot new'].isChecked():
+            if (
+                self.monitor.isActive()
+                and self.autoLaunchPlots.elements["Auto-plot new"].isChecked()
+            ):
                 for idx in newIdxs:
                     self.plotRun(idx)
-                    self._plotWindows[idx]['window'].setMonitorInterval(
+                    self._plotWindows[idx]["window"].setMonitorInterval(
                         self.monitorInput.spin.value()
                     )
 
@@ -514,7 +549,7 @@ class QCodesDBInspector(QtWidgets.QMainWindow):
     def updateDates(self) -> None:
         assert self.dbdf is not None
         if self.dbdf.size > 0:
-            dates = list(self.dbdf.groupby('started_date').indices.keys())
+            dates = list(self.dbdf.groupby("started_date").indices.keys())
             self.dateList.updateDates(dates)
 
     ### reloading the db
@@ -540,19 +575,23 @@ class QCodesDBInspector(QtWidgets.QMainWindow):
 
     @Slot()
     def monitorTriggered(self) -> None:
-        LOGGER.debug('Refreshing DB')
+        LOGGER.debug("Refreshing DB")
         self.refreshDB()
 
     @Slot()
     def updateRunList(self) -> None:
         if self.dbdf is None:
             return
-        selection = self.dbdf.loc[self.dbdf['started_date'].isin(self._selected_dates)].sort_index(ascending=False)
+        selection = self.dbdf.loc[
+            self.dbdf["started_date"].isin(self._selected_dates)
+        ].sort_index(ascending=False)
         show_only_star = self.showOnlyStarAction.isChecked()
         show_also_cross = self.showAlsoCrossAction.isChecked()
         # Pandas types cannot infer that this dataframe will be
         # using int as index and Dict[str, str] as keys
-        selection_dict = cast(Dict[int, Dict[str,str]], selection.to_dict(orient='index'))
+        selection_dict = cast(
+            dict[int, dict[str, str]], selection.to_dict(orient="index")
+        )
         self.runList.setRuns(selection_dict, show_only_star, show_also_cross)
 
     ### handling user selections
@@ -560,11 +599,15 @@ class QCodesDBInspector(QtWidgets.QMainWindow):
     def setDateSelection(self, dates: Sequence[str]) -> None:
         if len(dates) > 0:
             assert self.dbdf is not None
-            selection = self.dbdf.loc[self.dbdf['started_date'].isin(dates)].sort_index(ascending=False)
+            selection = self.dbdf.loc[self.dbdf["started_date"].isin(dates)].sort_index(
+                ascending=False
+            )
             old_dates = self._selected_dates
             # Pandas types cannot infer that this dataframe will be
             # using int as index and Dict[str, str] as keys
-            selection_dict = cast(Dict[int, Dict[str,str]], selection.to_dict(orient='index'))
+            selection_dict = cast(
+                dict[int, dict[str, str]], selection.to_dict(orient="index")
+            )
             if not all(date in old_dates for date in dates):
                 show_only_star = self.showOnlyStarAction.isChecked()
                 show_also_cross = self.showAlsoCrossAction.isChecked()
@@ -581,16 +624,18 @@ class QCodesDBInspector(QtWidgets.QMainWindow):
         assert self.filepath is not None
         ds = load_dataset_from(self.filepath, runId)
         snap = None
-        if hasattr(ds, 'snapshot'):
+        if hasattr(ds, "snapshot"):
             snap = ds.snapshot
 
-        structure = cast(Dict[str, dict], get_ds_structure(ds))
+        structure = cast(dict[str, dict], get_ds_structure(ds))
         # cast away typed dict so we can pop a key
         for k, v in structure.items():
-            v.pop('values')
-        contentInfo = {'Data structure': structure,
-                       'Metadata': ds.metadata,
-                       'QCoDeS Snapshot': snap}
+            v.pop("values")
+        contentInfo = {
+            "Data structure": structure,
+            "Metadata": ds.metadata,
+            "QCoDeS Snapshot": snap,
+        }
         self._sendInfo.emit(contentInfo)
 
     @Slot(int)
@@ -598,8 +643,8 @@ class QCodesDBInspector(QtWidgets.QMainWindow):
         assert self.filepath is not None
         fc, win = autoplotQcodesDataset(pathAndId=(self.filepath, runId))
         self._plotWindows[runId] = {
-            'flowchart': fc,
-            'window': win,
+            "flowchart": fc,
+            "window": win,
         }
         win.showTime()
 
@@ -608,11 +653,11 @@ class QCodesDBInspector(QtWidgets.QMainWindow):
         assert self.filepath is not None
         runId = int(item.text(0))
         ds = load_dataset_from(self.filepath, runId)
-        ds.add_metadata('inspectr_tag', tag)
+        ds.add_metadata("inspectr_tag", tag)
 
         # set tag in self.dbdf
         assert self.dbdf is not None
-        self.dbdf.at[runId, 'inspectr_tag'] = tag
+        self.dbdf.at[runId, "inspectr_tag"] = tag
 
         # set tag in the GUI
         tag_char = self.runList.tag_dict[tag]
@@ -626,17 +671,17 @@ class QCodesDBInspector(QtWidgets.QMainWindow):
             current_tag_char = item.text(1)
             tag_char = self.runList.tag_dict[tag]
             if current_tag_char == tag_char:  # if already tagged
-                self.setTag(item, '')  # clear tag
+                self.setTag(item, "")  # clear tag
             else:  # if not tagged
                 self.setTag(item, tag)  # set tag
 
     @Slot()
     def starSelectedRun(self) -> None:
-        self.tagSelectedRun('star')
+        self.tagSelectedRun("star")
 
     @Slot()
     def crossSelectedRun(self) -> None:
-        self.tagSelectedRun('cross')
+        self.tagSelectedRun("cross")
 
 
 class WindowDict(TypedDict):
@@ -644,30 +689,33 @@ class WindowDict(TypedDict):
     window: QCAutoPlotMainWindow
 
 
-def inspectr(dbPath: Optional[str] = None) -> QCodesDBInspector:
+def inspectr(dbPath: str | None = None) -> QCodesDBInspector:
     win = QCodesDBInspector(dbPath=dbPath)
     return win
 
 
-def main(dbPath: Optional[str], log_level: Union[int, str] = logging.WARNING) -> None:
+def main(dbPath: str | None, log_level: int | str = logging.WARNING) -> None:
     app = QtWidgets.QApplication([])
     plottrlog.enableStreamHandler(True, log_level)
 
     win = inspectr(dbPath=dbPath)
     win.show()
 
-    if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+    if (sys.flags.interactive != 1) or not hasattr(QtCore, "PYQT_VERSION"):
         appinstance = QtWidgets.QApplication.instance()
         assert appinstance is not None
         appinstance.exec_()
 
 
 def script() -> None:
-    parser = argparse.ArgumentParser(description='inspectr -- sifting through qcodes data.')
-    parser.add_argument('--dbpath', help='path to qcodes .db file',
-                        default=None)
-    parser.add_argument("--console-log-level",
-                        choices=("ERROR", "WARNING", "INFO", "DEBUG"),
-                        default="WARNING")
+    parser = argparse.ArgumentParser(
+        description="inspectr -- sifting through qcodes data."
+    )
+    parser.add_argument("--dbpath", help="path to qcodes .db file", default=None)
+    parser.add_argument(
+        "--console-log-level",
+        choices=("ERROR", "WARNING", "INFO", "DEBUG"),
+        default="WARNING",
+    )
     args = parser.parse_args()
     main(args.dbpath, args.console_log_level)

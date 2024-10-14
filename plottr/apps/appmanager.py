@@ -14,17 +14,28 @@ app processes. An app can be launched using the launchApp function.
 """
 
 import sys
-import zmq
+from collections.abc import Callable
 from pathlib import Path
-from typing import Dict, Union, Any, Callable, Tuple, Optional
-
 from traceback import print_exception
-from plottr import QtCore, QtWidgets, QtGui, Flowchart, Signal, Slot, log, qtapp, qtsleep, plottrPath
+from typing import Any, Union
+
+import zmq
+
+from plottr import (
+    Flowchart,
+    QtCore,
+    QtGui,
+    QtWidgets,
+    Signal,
+    Slot,
+    log,
+    plottrPath,
+    qtsleep,
+)
 from plottr.gui.widgets import PlotWindow
 
-
 #: The type of a plottr app
-AppType = Callable[[Any], Tuple[Flowchart, PlotWindow]]
+AppType = Callable[[Any], tuple[Flowchart, PlotWindow]]
 
 #: The type of the ids.
 IdType = Union[int, str]
@@ -53,7 +64,7 @@ class AppServer(QtCore.QObject):
 
     messageReceived = Signal(object)
 
-    def __init__(self, port: str, parent: Optional[QtCore.QObject] = None):
+    def __init__(self, port: str, parent: QtCore.QObject | None = None):
         """
         Constructor for :class: `.AppServer`
 
@@ -63,13 +74,13 @@ class AppServer(QtCore.QObject):
         """
         super().__init__(parent=parent)
         self.port = port
-        self.address = '127.0.0.1'
+        self.address = "127.0.0.1"
         self.context = zmq.Context()
         self.t_blocking = 1000  # in ms
         self.reply = None
         self.running = True
 
-        self.socket: Optional[zmq.Socket] = self.context.socket(zmq.REP)
+        self.socket: zmq.Socket | None = self.context.socket(zmq.REP)
         self.poller = zmq.Poller()
         self.poller.register(self.socket, zmq.POLLIN)
 
@@ -78,7 +89,7 @@ class AppServer(QtCore.QObject):
         Connects the socket and starts listening for commands.
         """
         assert isinstance(self.socket, zmq.Socket)
-        self.socket.bind(f'tcp://{self.address}:{self.port}')
+        self.socket.bind(f"tcp://{self.address}:{self.port}")
 
         while self.running:
             # Check if there are any messages.
@@ -87,8 +98,8 @@ class AppServer(QtCore.QObject):
                 evts = self.poller.poll(self.t_blocking)
             if len(evts) > 0:
                 message = self.socket.recv_pyobj()
-                if message == 'ping':
-                    self.socket.send_pyobj('pong')
+                if message == "ping":
+                    self.socket.send_pyobj("pong")
                 else:
                     self.messageReceived.emit(message)
                     # Wait until the reply is generated.
@@ -132,7 +143,13 @@ class App(QtCore.QObject):
     #:  Any python object that can be pickled.
     replyReady = Signal(object)
 
-    def __init__(self, setupFunc: AppType, port: int, parent: Optional[QtCore.QObject] = None, *args: Any):
+    def __init__(
+        self,
+        setupFunc: AppType,
+        port: int,
+        parent: QtCore.QObject | None = None,
+        *args: Any,
+    ):
         super().__init__(parent=parent)
 
         self.fc, self.win = setupFunc(args[0])
@@ -142,8 +159,8 @@ class App(QtCore.QObject):
         self.win.windowClosed.connect(self.onQuit)
 
         self.port = port
-        self.server: Optional[AppServer] = AppServer(str(port))
-        self.serverThread: Optional[QtCore.QThread] = QtCore.QThread()
+        self.server: AppServer | None = AppServer(str(port))
+        self.serverThread: QtCore.QThread | None = QtCore.QThread()
 
         self.replyReady.connect(self.server.loadReply)
         self.server.messageReceived.connect(self.onMessageReceived)
@@ -152,7 +169,7 @@ class App(QtCore.QObject):
         self.serverThread.start()
 
     @Slot(object)
-    def onMessageReceived(self, message: Tuple[str, str, Any]) -> None:
+    def onMessageReceived(self, message: tuple[str, str, Any]) -> None:
         """
         Handles message reception and reply to the app. Emits the signal replyReady with the reply. The signal is
         connected to the AppServer and the server sends the reply back.
@@ -186,17 +203,19 @@ class App(QtCore.QObject):
         targetProperty = message[1]
         value = message[2]
 
-        if targetName in ['', 'fc', 'flowchart']:
-            if targetProperty == 'setInput':
+        if targetName in ["", "fc", "flowchart"]:
+            if targetProperty == "setInput":
                 reply = self.fc.setInput(**value)
-            elif targetProperty == 'getOutput':
+            elif targetProperty == "getOutput":
                 reply = self.fc.outputValues()
             else:
-                reply = ValueError(f"Flowchart supports only setting input values ('setInput') "
-                                          f"or getting output values ('getOutput'). "
-                                          f"'{targetProperty}' is not known.")
+                reply = ValueError(
+                    f"Flowchart supports only setting input values ('setInput') "
+                    f"or getting output values ('getOutput'). "
+                    f"'{targetProperty}' is not known."
+                )
         else:
-            ret: Union[bool, Exception]
+            ret: bool | Exception
             try:
                 node = self.fc.nodes()[targetName]
                 setattr(node, targetProperty, value)
@@ -236,9 +255,9 @@ class ProcessMonitor(QtCore.QObject):
     #:  * The Id of the newly closed process.
     processTerminated = Signal(object)
 
-    def __init__(self, parent: Optional[QtCore.QObject] = None):
+    def __init__(self, parent: QtCore.QObject | None = None):
         super().__init__(parent=parent)
-        self.processes: Dict[IdType, QtCore.QProcess] = {}
+        self.processes: dict[IdType, QtCore.QProcess] = {}
         self.checking = True
 
     @Slot(object, object)
@@ -279,9 +298,9 @@ class ProcessMonitor(QtCore.QObject):
         Gets called when any process emits the readyReadStandardOutput signal, and prints any message it receives.
         """
         for Id, process in self.processes.items():
-            output = str(process.readAllStandardOutput(), 'utf-8')  # type: ignore[call-overload] # mypy complains about str() not accepting QbyteArray even though it is an object
-            if output != '':
-                print(f'Process {Id}: {output}')
+            output = str(process.readAllStandardOutput(), "utf-8")  # type: ignore[call-overload] # mypy complains about str() not accepting QbyteArray even though it is an object
+            if output != "":
+                print(f"Process {Id}: {output}")
 
     @Slot()
     def onReadyStandardError(self) -> None:
@@ -289,9 +308,9 @@ class ProcessMonitor(QtCore.QObject):
         Gets called when any process emits the readyReadStandardError signal, and prints any messages it receives.
         """
         for Id, process in self.processes.items():
-            output = str(process.readAllStandardError(), 'utf-8')  # type: ignore[call-overload] # mypy complains about str() not accepting QbyteArray even though it is an object.
-            if output != '':
-                print(f'Process {Id}: {output}')
+            output = str(process.readAllStandardError(), "utf-8")  # type: ignore[call-overload] # mypy complains about str() not accepting QbyteArray even though it is an object.
+            if output != "":
+                print(f"Process {Id}: {output}")
 
 
 class AppManager(QtWidgets.QWidget):
@@ -311,22 +330,26 @@ class AppManager(QtWidgets.QWidget):
 
     closeProcmon = Signal()
 
-    def __init__(self, initialPort: int = 12345, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(
+        self, initialPort: int = 12345, parent: QtWidgets.QWidget | None = None
+    ):
         """
         Constructor of AppManager.
 
         :param initialPort: The first port to be assigned to the first App.
         """
         super().__init__(parent=parent)
-        self.processes: Dict[IdType, Dict[str, Union[QtCore.QProcess, zmq.sugar.socket.Socket, int]]] = {}
+        self.processes: dict[
+            IdType, dict[str, QtCore.QProcess | zmq.sugar.socket.Socket | int]
+        ] = {}
 
         self.context = zmq.Context()
         self.poller = zmq.Poller()
-        self.address = '127.0.0.1'
+        self.address = "127.0.0.1"
         self.initialPort = initialPort  # This is the port that will be automatically assigned to the next app
 
-        self.procmon: Optional[ProcessMonitor] = ProcessMonitor()
-        self.procmonThread: Optional[QtCore.QThread] = QtCore.QThread(parent=self)
+        self.procmon: ProcessMonitor | None = ProcessMonitor()
+        self.procmonThread: QtCore.QThread | None = QtCore.QThread(parent=self)
         self.procmon.moveToThread(self.procmonThread)
         self.newProcess.connect(self.procmon.onNewProcess)
         self.procmon.processTerminated.connect(self.onProcessEneded)
@@ -346,25 +369,28 @@ class AppManager(QtWidgets.QWidget):
         """
         if Id not in self.processes:
             # Find the first available port
-            usedPorts = [data['port'] for data in self.processes.values()]
+            usedPorts = [data["port"] for data in self.processes.values()]
             port = self.initialPort
             while port in usedPorts:
                 port += 1
 
-            fullArgs = [str(Path(plottrPath).joinpath('apps', 'apprunner.py')), str(port), module, func] + list(args)
+            fullArgs = [
+                str(Path(plottrPath).joinpath("apps", "apprunner.py")),
+                str(port),
+                module,
+                func,
+            ] + list(args)
             process = QtCore.QProcess()
             process.start(sys.executable, fullArgs)
             process.waitForStarted(100)
             socket = self.context.socket(zmq.REQ)
-            socket.connect(f'tcp://{self.address}:{str(port)}')
+            socket.connect(f"tcp://{self.address}:{str(port)}")
             self.poller.register(socket, zmq.POLLIN)
-            self.processes[Id] = {'process': process,
-                                  'port': port,
-                                  'socket': socket}
+            self.processes[Id] = {"process": process, "port": port, "socket": socket}
             self.newProcess.emit(Id, process)
             return True
 
-        logger.warning(f'Id {Id} already exists')
+        logger.warning(f"Id {Id} already exists")
         return False
 
     @Slot(object)
@@ -385,17 +411,19 @@ class AppManager(QtWidgets.QWidget):
         :return: True if the ping was successful, False if not.
         """
         if Id not in self.processes:
-            logger.warning(f'{Id} not present in the processes.')
+            logger.warning(f"{Id} not present in the processes.")
             return False
-        socket = self.processes[Id]['socket']
+        socket = self.processes[Id]["socket"]
         assert isinstance(socket, zmq.sugar.socket.Socket)
-        socket.send_pyobj('ping')
+        socket.send_pyobj("ping")
         reply = socket.recv_pyobj()
-        if reply == 'pong':
+        if reply == "pong":
             return True
         return False
 
-    def message(self, Id: IdType, targetName: str, targetProperty: str, value: Any) -> Any:
+    def message(
+        self, Id: IdType, targetName: str, targetProperty: str, value: Any
+    ) -> Any:
         """Send a message to an app instance.
 
         :param Id: ID of the app instance.
@@ -434,13 +462,13 @@ class AppManager(QtWidgets.QWidget):
         if Id not in self.processes:
             raise ValueError(f"no app with ID <{Id}> running.")
         else:
-            socket = self.processes[Id]['socket']
+            socket = self.processes[Id]["socket"]
             assert isinstance(socket, zmq.sugar.socket.Socket)
             socket.send_pyobj((targetName, targetProperty, value))
             response = socket.recv_pyobj()
 
         if isinstance(response, Exception):
-            logger.warning(f'Exception occurred in app <{Id}>:')
+            logger.warning(f"Exception occurred in app <{Id}>:")
             print_exception(type(response), response, response.__traceback__)
 
         return response
@@ -461,11 +489,11 @@ class AppManager(QtWidgets.QWidget):
             self.procmonThread = None
 
         for Id, data in self.processes.items():
-            process = data['process']
+            process = data["process"]
             assert isinstance(process, QtCore.QProcess)
             process.close()
 
-            socket = data['socket']
+            socket = data["socket"]
             assert isinstance(socket, zmq.sugar.socket.Socket)
             socket.close(1)
 

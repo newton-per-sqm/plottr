@@ -1,21 +1,25 @@
-from typing import TYPE_CHECKING, List, Tuple, Dict, Any, Optional
-from importlib.abc import Loader
-from importlib.util import spec_from_file_location, module_from_spec
 import logging
 import os
-import sys
 import signal
+import sys
+from importlib.abc import Loader
+from importlib.util import module_from_spec, spec_from_file_location
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from PyQt5 import QtCore, QtGui, QtWidgets
+
     Signal = QtCore.pyqtSignal
     Slot = QtCore.pyqtSlot
 else:
     from qtpy import QtCore, QtGui, QtWidgets
+
     Signal = QtCore.Signal
     Slot = QtCore.Slot
 
-from pyqtgraph.flowchart import Flowchart as pgFlowchart, Node as pgNode
+from pyqtgraph.flowchart import Flowchart as pgFlowchart
+from pyqtgraph.flowchart import Node as pgNode
+
 Flowchart = pgFlowchart
 NodeBase = pgNode
 
@@ -42,7 +46,7 @@ def qtapp() -> QtWidgets.QApplication:
     return app
 
 
-def configPaths() -> Tuple[str, str, str]:
+def configPaths() -> tuple[str, str, str]:
     """Get the folders where plottr looks for config files.
 
     :return: List of absolute paths, in order of priority:
@@ -50,13 +54,13 @@ def configPaths() -> Tuple[str, str, str]:
         (2) ~/.plottr
         (3) config directory in the package.
     """
-    builtIn = os.path.join(plottrPath, 'config')
-    user = os.path.join(os.path.expanduser("~"), '.plottr')
+    builtIn = os.path.join(plottrPath, "config")
+    user = os.path.join(os.path.expanduser("~"), ".plottr")
     cwd = os.getcwd()
     return cwd, user, builtIn
 
 
-def configFiles(fileName: str) -> List[str]:
+def configFiles(fileName: str) -> list[str]:
     """Get available config files with the given file name.
 
     :param fileName: file name, without path
@@ -71,8 +75,7 @@ def configFiles(fileName: str) -> List[str]:
     return ret
 
 
-def config(names: Optional[List[str]] = None) -> \
-        Dict[str, Any]:
+def config(names: list[str] | None = None) -> dict[str, Any]:
     """Return the plottr configuration as a dictionary.
 
     Each config file found is expected to contain a dictionary with name
@@ -103,13 +106,13 @@ def config(names: Optional[List[str]] = None) -> \
         the program.
     """
     if names is None:
-        names = ['main']
+        names = ["main"]
 
     config = {}
     for name in names:
         modn = f"plottrcfg_{name}"
         filen = f"{modn}.py"
-        this_cfg: Dict[str, Any] = {}
+        this_cfg: dict[str, Any] = {}
         for filep in configFiles(filen)[::-1]:
             spec = spec_from_file_location(modn, filep)
             if spec is None:
@@ -118,14 +121,15 @@ def config(names: Optional[List[str]] = None) -> \
             sys.modules[modn] = mod
             assert isinstance(spec.loader, Loader)
             spec.loader.exec_module(mod)
-            this_cfg.update(getattr(mod, 'config', {}))
+            this_cfg.update(getattr(mod, "config", {}))
 
         config[name] = this_cfg
     return config
 
 
-def config_entry(*path: str, default: Optional[Any] = None,
-                 names: Optional[List[str]] = None) -> Any:
+def config_entry(
+    *path: str, default: Any | None = None, names: list[str] | None = None
+) -> Any:
     """Get a specific config value.
 
     ..Example: If the config is:: python

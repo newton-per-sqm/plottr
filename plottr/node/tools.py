@@ -2,13 +2,12 @@
 
 tools for working with flowcharts and nodes.
 """
-from typing import Type, Tuple
 
 from plottr import Flowchart
 from plottr.node import Node
 
-__author__ = 'Wolfgang Pfaff'
-__license__ = 'MIT'
+__author__ = "Wolfgang Pfaff"
+__license__ = "MIT"
 
 
 def flowchart() -> Flowchart:
@@ -19,15 +18,14 @@ def flowchart() -> Flowchart:
     """
     fc = Flowchart(
         terminals=dict(
-            dataIn=dict(io='in'),
-            dataOut=dict(io='out'),
+            dataIn=dict(io="in"),
+            dataOut=dict(io="out"),
         )
     )
     return fc
 
 
-def linearFlowchart(*nodes: Tuple[str, Type[Node]]) \
-        -> Flowchart:
+def linearFlowchart(*nodes: tuple[str, type[Node]]) -> Flowchart:
     """Create a flowchart with linearly connected nodes
 
     :param node: Nodes, in the order in which they will be connected.
@@ -42,7 +40,7 @@ def linearFlowchart(*nodes: Tuple[str, Type[Node]]) \
     instances = []
 
     if nNodes == 0:
-        fc.connectTerminals(fc['dataIn'], fc['dataOut'])
+        fc.connectTerminals(fc["dataIn"], fc["dataOut"])
         return fc
 
     for i, (name, cls) in enumerate(nodes):
@@ -51,11 +49,11 @@ def linearFlowchart(*nodes: Tuple[str, Type[Node]]) \
         fc.addNode(node, name=name)
 
         if i == 0:
-            fc.connectTerminals(fc['dataIn'], node['dataIn'])
+            fc.connectTerminals(fc["dataIn"], node["dataIn"])
         else:
-            fc.connectTerminals(instances[i - 1]['dataOut'], node['dataIn'])
+            fc.connectTerminals(instances[i - 1]["dataOut"], node["dataIn"])
 
         if i == nNodes - 1:
-            fc.connectTerminals(node['dataOut'], fc['dataOut'])
+            fc.connectTerminals(node["dataOut"], fc["dataOut"])
 
     return fc

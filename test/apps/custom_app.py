@@ -1,20 +1,21 @@
 """
 Testing how to make a custom app with gui.
 """
-import numpy as np
+
 import lmfit
+import numpy as np
 
 from plottr import QtWidgets
 from plottr.data.datadict import DataDictBase, MeshgridDataDict
 from plottr.gui.widgets import makeFlowchartWithPlotWindow
-from plottr.node.dim_reducer import XYSelector
 from plottr.node.autonode import autonode
+from plottr.node.dim_reducer import XYSelector
 
 
 def makeData():
     xvals = np.linspace(0, 10, 51)
     reps = np.arange(20)
-    xx, rr = np.meshgrid(xvals, reps, indexing='ij')
+    xx, rr = np.meshgrid(xvals, reps, indexing="ij")
     data = sinefunc(xx, amp=0.8, freq=0.25, phase=0.1)
     noise = np.random.normal(scale=0.2, size=data.shape)
     data += noise
@@ -22,7 +23,7 @@ def makeData():
     dd = MeshgridDataDict(
         x=dict(values=xx),
         repetition=dict(values=rr),
-        sine=dict(values=data, axes=['x', 'repetition']),
+        sine=dict(values=data, axes=["x", "repetition"]),
     )
     return dd
 
@@ -32,9 +33,9 @@ def sinefunc(x, amp, freq, phase):
 
 
 @autonode(
-    'sineFitter',
+    "sineFitter",
     confirm=True,
-    frequencyGuess={'initialValue': 1.0, 'type': float},
+    frequencyGuess={"initialValue": 1.0, "type": float},
 )
 def sinefit(self, dataIn: DataDictBase = None):
     if dataIn is None:
@@ -53,17 +54,19 @@ def sinefit(self, dataIn: DataDictBase = None):
 
     dataOut = dataIn.copy()
     if result.success:
-        dataOut['fit'] = dict(values=result.best_fit, axes=[axname,])
-        dataOut.add_meta('info', result.fit_report())
+        dataOut["fit"] = dict(
+            values=result.best_fit,
+            axes=[
+                axname,
+            ],
+        )
+        dataOut.add_meta("info", result.fit_report())
 
     return dict(dataOut=dataOut)
 
 
 def makeNodeList():
-    nodes = [
-        ('Dimension selector', XYSelector),
-        ('Sine fitter', sinefit)
-    ]
+    nodes = [("Dimension selector", XYSelector), ("Sine fitter", sinefit)]
     return nodes
 
 
@@ -82,5 +85,5 @@ def main():
     return app.exec_()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

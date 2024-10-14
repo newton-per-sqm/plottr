@@ -11,25 +11,25 @@ In given intervals, the next data is then passed to the plotting app until the i
 
 import logging
 import sys
-from time import time, sleep
-from typing import Iterable
+from collections.abc import Iterable
+from time import sleep, time
 
 import numpy as np
 
 from plottr import QtCore, QtWidgets, Signal
 from plottr import log as plottrlog
 from plottr.apps.autoplot import autoplot
-from plottr.data.datadict import DataDictBase, DataDict
-from plottr.plot.mpl.autoplot import AutoPlot as MPLAutoPlot
+from plottr.data.datadict import DataDict, DataDictBase
 from plottr.plot.pyqtgraph.autoplot import AutoPlot as PGAutoPlot
 from plottr.utils import testdata
 
 plottrlog.enableStreamHandler(True, level=logging.DEBUG)
-logger = plottrlog.getLogger('plottr.test.autoplot_app')
+logger = plottrlog.getLogger("plottr.test.autoplot_app")
 
 
 class DataSource(QtCore.QObject):
     """Abstract data source. For specific data, implement a child class."""
+
     dataready = Signal(object)
     nomoredata = Signal()
     initialdelay: float = 1.0
@@ -96,7 +96,7 @@ class ImageDataLiveAcquisition(DataSource):
         idx = 0
         size = self.nrows * self.ncols
         if size == 0:
-            raise ValueError('Data has size zero.')
+            raise ValueError("Data has size zero.")
 
         data = fulldata.structure(same_type=True)
         assert isinstance(data, DataDictBase)
@@ -106,7 +106,7 @@ class ImageDataLiveAcquisition(DataSource):
             if idx >= size:
                 idx = size
             for k, v in fulldata.data_items():
-                data[k]['values'] = fulldata.data_vals(k)[:idx]
+                data[k]["values"] = fulldata.data_vals(k)[:idx]
             yield data
         yield data
 
@@ -122,13 +122,13 @@ class ComplexImage(DataSource):
     def data(self) -> Iterable[DataDictBase]:
         x = np.linspace(0, 10, self.nx)
         y = np.linspace(0, 2 * np.pi, self.ny)
-        xx, yy = np.meshgrid(x, y, indexing='ij')
+        xx, yy = np.meshgrid(x, y, indexing="ij")
         zz = np.exp(-1j * (0.5 * xx + yy))
         data = DataDict(
             time=dict(values=xx.flatten()),
             phase=dict(values=yy.flatten()),
-            data=dict(values=zz.flatten(), axes=['time', 'phase']),
-            conjugate=dict(values=zz.conj().flatten(), axes=['time', 'phase'])
+            data=dict(values=zz.flatten(), axes=["time", "phase"]),
+            conjugate=dict(values=zz.conj().flatten(), axes=["time", "phase"]),
         )
         data.add_meta("title", "A complex data image (phasor vs time and phase)")
         data.add_meta("info", "This is a test data set to test complex data display.")
@@ -150,7 +150,7 @@ def main(dataSrc):
 
     dataThread.start()
 
-    if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+    if (sys.flags.interactive != 1) or not hasattr(QtCore, "PYQT_VERSION"):
         QtWidgets.QApplication.instance().exec_()
 
 
@@ -158,7 +158,7 @@ def main(dataSrc):
 plotWidgetClass = PGAutoPlot
 # plotWidgetClass = None
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # src = LineDataMovie(20, 3, 31)
     # src = ImageDataMovie(10, 2, 101)
     src = ImageDataLiveAcquisition(101, 101, 67)

@@ -3,9 +3,8 @@
 Testing scripts for GUI elements for data display.
 """
 
-from plottr import QtWidgets
-from plottr.gui.tools import widgetDialog
 from plottr.gui.data_display import DataSelectionWidget
+from plottr.gui.tools import widgetDialog
 from plottr.utils import testdata
 
 
@@ -24,4 +23,3 @@ def test_dataSelectionWidget(readonly: bool = False):
     widget.clear()
     widget.setData(data.structure(), data.shapes())
     return dialog
-

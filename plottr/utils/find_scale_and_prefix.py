@@ -3,46 +3,67 @@ Fallback module can be removed once we drop support for qcodes < 0.21
 """
 
 from collections import OrderedDict
-from typing import Set, Dict, Tuple
 
 import numpy as np
 
-
-_UNITS_FOR_RESCALING: Set[str] = {
+_UNITS_FOR_RESCALING: set[str] = {
     # SI units (without some irrelevant ones like candela)
     # 'kg' is not included because it is 'kilo' and rarely used
-    'm', 's', 'A', 'K', 'mol', 'rad', 'Hz', 'N', 'Pa', 'J',
-    'W', 'C', 'V', 'F', 'ohm', 'Ohm', 'Ω',
-    '\N{GREEK CAPITAL LETTER OMEGA}', 'S', 'Wb', 'T', 'H',
+    "m",
+    "s",
+    "A",
+    "K",
+    "mol",
+    "rad",
+    "Hz",
+    "N",
+    "Pa",
+    "J",
+    "W",
+    "C",
+    "V",
+    "F",
+    "ohm",
+    "Ohm",
+    "Ω",
+    "\N{GREEK CAPITAL LETTER OMEGA}",
+    "S",
+    "Wb",
+    "T",
+    "H",
     # non-SI units as well, for convenience
-    'eV', 'g'
+    "eV",
+    "g",
 }
 
-_ENGINEERING_PREFIXES: Dict[int, str] = OrderedDict({
-    -24: "y",
-    -21: "z",
-    -18: "a",
-    -15: "f",
-    -12: "p",
-     -9: "n",
-     -6: "\N{GREEK SMALL LETTER MU}",
-     -3: "m",
-      0: "",
-      3: "k",
-      6: "M",
-      9: "G",
-     12: "T",
-     15: "P",
-     18: "E",
-     21: "Z",
-     24: "Y"
-})
+_ENGINEERING_PREFIXES: dict[int, str] = OrderedDict(
+    {
+        -24: "y",
+        -21: "z",
+        -18: "a",
+        -15: "f",
+        -12: "p",
+        -9: "n",
+        -6: "\N{GREEK SMALL LETTER MU}",
+        -3: "m",
+        0: "",
+        3: "k",
+        6: "M",
+        9: "G",
+        12: "T",
+        15: "P",
+        18: "E",
+        21: "Z",
+        24: "Y",
+    }
+)
 
-_THRESHOLDS: Dict[float, int] = OrderedDict(
-    {10**(scale + 3): scale for scale in _ENGINEERING_PREFIXES.keys()})
+_THRESHOLDS: dict[float, int] = OrderedDict(
+    {10 ** (scale + 3): scale for scale in _ENGINEERING_PREFIXES.keys()}
+)
 
 
-def find_scale_and_prefix(data: np.ndarray, unit: str) -> Tuple[str, int]:
+def find_scale_and_prefix(data: np.ndarray, unit: str) -> tuple[str, int]:
     """
     Given a numpy array of data and a unit find the best engineering prefix
     and matching scale that best describes the data.
@@ -84,9 +105,9 @@ def find_scale_and_prefix(data: np.ndarray, unit: str) -> Tuple[str, int]:
         else:
             selected_scale = 0
         if selected_scale != 0:
-            prefix = f'$10^{{{selected_scale:.0f}}}$ '
+            prefix = f"$10^{{{selected_scale:.0f}}}$ "
         else:
-            prefix = ''
+            prefix = ""
     else:
         prefix = ""
         selected_scale = 0

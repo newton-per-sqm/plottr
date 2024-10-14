@@ -1,8 +1,14 @@
-import pytest
 import numpy as np
+import pytest
 
-from plottr.data.datadict import DataDict, DataDictBase, str2dd, datasets_are_equal, datadict_to_meshgrid
-from plottr.data.datadict import combine_datadicts
+from plottr.data.datadict import (
+    DataDict,
+    DataDictBase,
+    combine_datadicts,
+    datadict_to_meshgrid,
+    datasets_are_equal,
+    str2dd,
+)
 
 
 def test_get_data():
@@ -10,16 +16,16 @@ def test_get_data():
 
     dd = DataDictBase(
         x=dict(values=[1, 2, 3]),
-        y=dict(values=[1, 2, 3], axes=['x']),
+        y=dict(values=[1, 2, 3], axes=["x"]),
         a=dict(values=[4, 5, 6], axes=[]),
         b=dict(values=[5, 6, 7], axes=[]),
-        c=dict(values=[6, 7, 8], axes=['b', 'a']),
+        c=dict(values=[6, 7, 8], axes=["b", "a"]),
     )
 
-    assert set(dd.dependents()) == {'y', 'c'}
-    assert set(dd.axes()) == {'a', 'b', 'x'}
-    assert dd.axes('c') == ['b', 'a']
-    assert dd.data_vals('c') == [6, 7, 8]
+    assert set(dd.dependents()) == {"y", "c"}
+    assert set(dd.axes()) == {"a", "b", "x"}
+    assert dd.axes("c") == ["b", "a"]
+    assert dd.data_vals("c") == [6, 7, 8]
 
 
 def test_meta():
@@ -28,50 +34,50 @@ def test_meta():
     dd = DataDict(
         x=dict(
             values=[1, 2, 3],
-            __meta1__='abc',
-            __meta2__='def',
+            __meta1__="abc",
+            __meta2__="def",
         ),
         y=dict(
             values=[1, 2, 3],
-            axes=['x'],
-            __meta3__='123',
+            axes=["x"],
+            __meta3__="123",
             __meta4__=None,
         ),
         __info__=lambda x: 0,
         __more_info__=object,
     )
-    dd['__1234!__'] = '```'
-    dd.add_meta('###', 3e-12)
-    dd.add_meta('@^&', 0, data='x')
+    dd["__1234!__"] = "```"
+    dd.add_meta("###", 3e-12)
+    dd.add_meta("@^&", 0, data="x")
 
     assert dd.validate()
 
     global_meta = {k: v for k, v in dd.meta_items()}
-    for k in ['info', 'more_info', '1234!', '###']:
-        assert f'__{k}__' in dd
+    for k in ["info", "more_info", "1234!", "###"]:
+        assert f"__{k}__" in dd
         assert k in global_meta
 
-    assert dd.meta_val('more_info') == object
-    assert dd.meta_val('info')(1) == 0
-    assert dd.meta_val('@^&', 'x') == 0
+    assert dd.meta_val("more_info") == object
+    assert dd.meta_val("info")(1) == 0
+    assert dd.meta_val("@^&", "x") == 0
 
-    assert dd.has_meta('meta1')
-    assert dd.has_meta('meta3')
+    assert dd.has_meta("meta1")
+    assert dd.has_meta("meta3")
 
-    for k in ['meta1', 'meta2', '@^&']:
-        assert dd.meta_val(k, data='x') == dd['x'][f'__{k}__']
-        assert f'__{k}__' in dd['x']
-        assert k in [n for n, _ in dd.meta_items('x')]
+    for k in ["meta1", "meta2", "@^&"]:
+        assert dd.meta_val(k, data="x") == dd["x"][f"__{k}__"]
+        assert f"__{k}__" in dd["x"]
+        assert k in [n for n, _ in dd.meta_items("x")]
 
     # test stripping of meta information
 
     # test stripping specific data field
 
-    dd.clear_meta('x')
+    dd.clear_meta("x")
     assert dd.validate()
     x_nmeta = 0
-    for k, _ in dd['x'].items():
-        if k[:2] == '__' and k[-2:] == '__':
+    for k, _ in dd["x"].items():
+        if k[:2] == "__" and k[-2:] == "__":
             x_nmeta += 1
     assert x_nmeta == 0
 
@@ -80,15 +86,16 @@ def test_meta():
 
     nmeta = 0
     for k, _ in dd.items():
-        if k[:2] == '__' and k[-2:] == '__':
+        if k[:2] == "__" and k[-2:] == "__":
             nmeta += 1
     assert nmeta == 0
 
     for d, v in dd.data_items():
         for k, _ in dd[d].items():
-            if k[:2] == '__' and k[-2:] == '__':
+            if k[:2] == "__" and k[-2:] == "__":
                 nmeta += 1
         assert nmeta == 0
+
 
 #
 # def test_extract():
@@ -101,25 +108,23 @@ def test_structure():
     dd = DataDictBase(
         x=dict(values=[1, 2, 3, 1]),
         y=dict(values=[1, 2, 3, 1]),
-        z=dict(values=[0, 0, 0, 0], axes=['x', 'y']),
-        __info__='some info',
+        z=dict(values=[0, 0, 0, 0], axes=["x", "y"]),
+        __info__="some info",
     )
 
     dd2 = DataDictBase(
         x=dict(values=[2, 3, 4]),
         y=dict(values=[10, 20, 30]),
-        z=dict(values=[-1, -3, -5], axes=['x', 'y']),
+        z=dict(values=[-1, -3, -5], axes=["x", "y"]),
         __otherinfo__=0,
     )
 
-    assert dd.structure().dependents() == ['z']
-    assert dd.structure().axes('z') == ['x', 'y']
+    assert dd.structure().dependents() == ["z"]
+    assert dd.structure().axes("z") == ["x", "y"]
 
-    assert dd.structure(include_meta=False) == \
-           dd2.structure(include_meta=False)
+    assert dd.structure(include_meta=False) == dd2.structure(include_meta=False)
 
-    assert dd.structure(include_meta=True) != \
-           dd2.structure(include_meta=True)
+    assert dd.structure(include_meta=True) != dd2.structure(include_meta=True)
 
     assert DataDictBase.same_structure(dd, dd2)
 
@@ -128,14 +133,12 @@ def test_validation():
     """Test if validation is working."""
 
     with pytest.raises(ValueError):
-        dd = DataDict(
-            y=dict(values=[0], axes=['x'])
-        )
+        dd = DataDict(y=dict(values=[0], axes=["x"]))
         dd.validate()
 
     dd = DataDict(
         x=dict(values=[0]),
-        y=dict(values=[0], axes=['x']),
+        y=dict(values=[0], axes=["x"]),
     )
     assert dd.validate()
 
@@ -145,12 +148,12 @@ def test_sanitizing():
     dd = DataDictBase(
         x=dict(values=[0]),
         y=dict(values=[0]),
-        z=dict(values=[0], axes=['y']),
+        z=dict(values=[0], axes=["y"]),
     )
 
     dd = dd.sanitize()
-    assert dd.axes() == ['y']
-    assert dd.dependents() == ['z']
+    assert dd.axes() == ["y"]
+    assert dd.dependents() == ["z"]
     assert dd.validate()
 
 
@@ -160,16 +163,16 @@ def test_reorder():
         a=dict(values=[4, 5, 6], axes=[]),
         b=dict(values=[5, 6, 7], axes=[]),
         c=dict(values=[6, 7, 8], axes=[]),
-        d=dict(values=[0, 0, 0], axes=['a', 'b', 'c'])
+        d=dict(values=[0, 0, 0], axes=["a", "b", "c"]),
     )
 
-    assert dd.axes('d') == ['a', 'b', 'c']
+    assert dd.axes("d") == ["a", "b", "c"]
 
-    dd = dd.reorder_axes('d', b=0, a=1, c=2)
-    assert dd.axes('d') == ['b', 'a', 'c']
+    dd = dd.reorder_axes("d", b=0, a=1, c=2)
+    assert dd.axes("d") == ["b", "a", "c"]
 
     dd = dd.reorder_axes(c=0)
-    assert dd.axes('d') == ['c', 'b', 'a']
+    assert dd.axes("d") == ["c", "b", "a"]
 
 
 def test_shapes():
@@ -181,20 +184,20 @@ def test_shapes():
         ),
         y=dict(
             values=[1, 2, 3],
-            axes=['x'],
+            axes=["x"],
         ),
         z=dict(
             values=[[0, 0], [1, 1], [2, 2]],
-            axes=['x'],
+            axes=["x"],
         ),
     )
 
     assert dd.validate()
 
     shapes = dd.shapes()
-    assert shapes['x'] == (3,)
-    assert shapes['y'] == (3,)
-    assert shapes['z'] == (3, 2)
+    assert shapes["x"] == (3,)
+    assert shapes["y"] == (3,)
+    assert shapes["z"] == (3, 2)
 
 
 def test_combine_ddicts():
@@ -211,8 +214,8 @@ def test_combine_ddicts():
         ),
         z1=dict(
             values=np.array([1, 2, 3]),
-            axes=['x', 'y'],
-        )
+            axes=["x", "y"],
+        ),
     )
     dd1.validate()
 
@@ -225,8 +228,8 @@ def test_combine_ddicts():
         ),
         z2=dict(
             values=np.array([3, 2, 1]),
-            axes=['x', 'y'],
-        )
+            axes=["x", "y"],
+        ),
     )
     dd2.validate()
 
@@ -240,11 +243,11 @@ def test_combine_ddicts():
         ),
         z1=dict(
             values=np.array([1, 2, 3]),
-            axes=['x', 'y'],
+            axes=["x", "y"],
         ),
         z2=dict(
             values=np.array([3, 2, 1]),
-            axes=['x', 'y'],
+            axes=["x", "y"],
         ),
     )
     expected_dd.validate()
@@ -260,8 +263,8 @@ def test_combine_ddicts():
         ),
         z1=dict(
             values=np.array([1, 2, 3]),
-            axes=['x', 'y'],
-        )
+            axes=["x", "y"],
+        ),
     )
     dd1.validate()
 
@@ -274,8 +277,8 @@ def test_combine_ddicts():
         ),
         z2=dict(
             values=np.array([3, 2, 1]),
-            axes=['x', 'y'],
-        )
+            axes=["x", "y"],
+        ),
     )
     dd2.validate()
 
@@ -289,15 +292,15 @@ def test_combine_ddicts():
         ),
         z1=dict(
             values=np.array([1, 2, 3]),
-            axes=['x', 'y'],
+            axes=["x", "y"],
         ),
         x_0=dict(
             values=np.array([1, 2, 4]),
         ),
         z2=dict(
             values=np.array([3, 2, 1]),
-            axes=['x_0', 'y'],
-        )
+            axes=["x_0", "y"],
+        ),
     )
     expected_dd.validate()
     assert combined_dd == expected_dd
@@ -306,19 +309,21 @@ def test_combine_ddicts():
     x = np.array([1, 2, 3])
     y = np.array([1, 2, 3])
     z = np.arange(3)
-    dd1 = DataDict(x=dict(values=x),
-                   y=dict(values=y),
-                   z=dict(values=z, axes=['x', 'y']))
+    dd1 = DataDict(
+        x=dict(values=x), y=dict(values=y), z=dict(values=z, axes=["x", "y"])
+    )
     dd1.validate()
     dd2 = dd1.copy()
-    dd2['z']['values'] = z[::-1]
+    dd2["z"]["values"] = z[::-1]
     dd2.validate()
 
     combined_dd = combine_datadicts(dd1, dd2)
-    expected_dd = DataDict(x=dict(values=x),
-                           y=dict(values=y),
-                           z=dict(values=z, axes=['x', 'y']),
-                           z_0=dict(values=z[::-1], axes=['x', 'y']))
+    expected_dd = DataDict(
+        x=dict(values=x),
+        y=dict(values=y),
+        z=dict(values=z, axes=["x", "y"]),
+        z_0=dict(values=z[::-1], axes=["x", "y"]),
+    )
     assert combined_dd == expected_dd
 
 
@@ -327,16 +332,16 @@ def test_creation_from_string():
     str_ok_1 = "z(x,y)"
     dd = str2dd(str_ok_1)
     assert dd.validate()
-    assert set(list(dd.keys())) == {'x', 'y', 'z'}
-    assert dd.axes('z') == ['x', 'y']
-    assert dd.axes('x') == []
+    assert set(list(dd.keys())) == {"x", "y", "z"}
+    assert dd.axes("z") == ["x", "y"]
+    assert dd.axes("x") == []
 
     str_ok_2 = "z1[V](x, y); z2[A](y, x); x[mT]"
     dd = str2dd(str_ok_2)
     assert dd.validate()
-    assert set(dd.dependents()) == {'z1', 'z2'}
-    assert dd['z1']['unit'] == 'V'
-    assert dd['x']['unit'] == 'mT'
+    assert set(dd.dependents()) == {"z1", "z2"}
+    assert dd["z1"]["unit"] == "V"
+    assert dd["x"]["unit"] == "mT"
 
     # conflicting units -- should raise ValueError
     str_notok = "z[V](x[A], y[T]); x[mA]; y[T]"
@@ -354,33 +359,33 @@ def test_creation_from_string():
     assert dd.validate()
     assert dd.dependents() == []
     assert dd.axes() == []
-    assert 'z' in dd
+    assert "z" in dd
 
 
 def test_equality():
     """test whether direct comparison of datasets is working."""
     dd1 = DataDict(
-        x=dict(values=np.arange(5), unit='A'),
-        y=dict(values=np.arange(5)**2, axes=['x']),
+        x=dict(values=np.arange(5), unit="A"),
+        y=dict(values=np.arange(5) ** 2, axes=["x"]),
     )
     assert dd1.validate()
-    dd1.add_meta('some_info', 'some_value')
+    dd1.add_meta("some_info", "some_value")
     dd2 = dd1.copy()
     assert datasets_are_equal(dd1, dd2)
     assert dd1 == dd2
 
     dd2 = dd1.copy()
-    dd2.delete_meta('some_info')
+    dd2.delete_meta("some_info")
     assert not datasets_are_equal(dd1, dd2)
     assert not dd1 == dd2
     assert datasets_are_equal(dd1, dd2, ignore_meta=True)
 
     dd2 = dd1.copy()
-    dd2['x']['unit'] = 'B'
+    dd2["x"]["unit"] = "B"
     assert not datasets_are_equal(dd1, dd2)
 
     dd2 = dd1.copy()
-    dd2['y']['values'][-1] -= 1
+    dd2["y"]["values"][-1] -= 1
     assert not datasets_are_equal(dd1, dd2)
 
     dd2 = DataDictBase(**dd1)
@@ -390,10 +395,8 @@ def test_equality():
     assert not datasets_are_equal(dd1, dd2)
 
     dd2 = dd1.copy()
-    dd2['w'] = dict(values=np.arange(5), unit='C')
-    dd2['y']['axes'] = ['w', 'x']
+    dd2["w"] = dict(values=np.arange(5), unit="C")
+    dd2["y"]["axes"] = ["w", "x"]
     assert not datasets_are_equal(dd1, dd2)
 
-    assert not dd1 == 'abc'
-
-
+    assert not dd1 == "abc"

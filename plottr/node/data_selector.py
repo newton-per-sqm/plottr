@@ -3,18 +3,20 @@ data_selector.py
 
 A node and widget for subselecting from a dataset.
 """
-from typing import List, Tuple, Dict, Any, Sequence, Optional
 
-import numpy as np
+from collections.abc import Sequence
+from typing import Any
 
-from .node import Node, NodeWidget, updateOption
-from ..data.datadict import DataDictBase, DataDict
-from ..gui.data_display import DataSelectionWidget
+
 from plottr.icons import get_dataColumnsIcon
-from ..utils import num
 
-__author__ = 'Wolfgang Pfaff'
-__license__ = 'MIT'
+from ..data.datadict import DataDict, DataDictBase
+from ..gui.data_display import DataSelectionWidget
+from ..utils import num
+from .node import Node, NodeWidget, updateOption
+
+__author__ = "Wolfgang Pfaff"
+__license__ = "MIT"
 
 
 class DataDisplayWidget(NodeWidget):
@@ -22,35 +24,37 @@ class DataDisplayWidget(NodeWidget):
     Simple Tree widget to show data and their dependencies in the node data.
     """
 
-    def __init__(self, node: Optional[Node] = None):
+    def __init__(self, node: Node | None = None):
         self.icon = get_dataColumnsIcon()
         super().__init__(embedWidgetClass=DataSelectionWidget)
         assert self.widget is not None
         self.optSetters = {
-            'selectedData': self.setSelected,
+            "selectedData": self.setSelected,
         }
         self.optGetters = {
-            'selectedData': self.getSelected,
+            "selectedData": self.getSelected,
         }
 
         self.widget.dataSelectionMade.connect(
-            lambda x: self.signalOption('selectedData'))
+            lambda x: self.signalOption("selectedData")
+        )
 
     def setSelected(self, vals: Sequence[str]) -> None:
         assert self.widget is not None
         self.widget.setSelectedData(vals)
         self._updateOptions(vals)
 
-    def getSelected(self) -> List[str]:
+    def getSelected(self) -> list[str]:
         assert self.widget is not None
         return self.widget.getSelectedData()
 
-    def setData(self, structure: DataDictBase,
-                shapes: Dict[str, Tuple[int, ...]], _: Any) -> None:
+    def setData(
+        self, structure: DataDictBase, shapes: dict[str, tuple[int, ...]], _: Any
+    ) -> None:
         assert self.widget is not None
         self.widget.setData(structure, shapes)
 
-    def setShape(self, shapes: Dict[str, Tuple[int, ...]]) -> None:
+    def setShape(self, shapes: dict[str, tuple[int, ...]]) -> None:
         assert self.widget is not None
         self.widget.setShape(shapes)
 
@@ -58,7 +62,7 @@ class DataDisplayWidget(NodeWidget):
         assert self.widget is not None
         ds = self.widget._dataStructure
         for n, w in self.widget.dataItems.items():
-            if selected != [] and ds[n]['axes'] != ds[selected[0]]['axes']:
+            if selected != [] and ds[n]["axes"] != ds[selected[0]]["axes"]:
                 self.widget.setItemEnabled(n, False)
             else:
                 self.widget.setItemEnabled(n, True)
@@ -93,12 +97,12 @@ class DataSelector(Node):
     # Properties
 
     @property
-    def selectedData(self) -> List[str]:
+    def selectedData(self) -> list[str]:
         return self._selectedData
 
     @selectedData.setter
-    @updateOption('selectedData')
-    def selectedData(self, val: List[str]) -> None:
+    @updateOption("selectedData")
+    def selectedData(self, val: list[str]) -> None:
         if isinstance(val, str):
             val = [val]
         self._selectedData = val
@@ -116,8 +120,8 @@ class DataSelector(Node):
         for elt in self.selectedData:
             if elt not in data:
                 self.node_logger.warning(
-                    f'Did not find selected data {elt} in data. '
-                    f'Clearing the selection.'
+                    f"Did not find selected data {elt} in data. "
+                    f"Clearing the selection."
                 )
                 self._selectedData = []
 
@@ -126,15 +130,15 @@ class DataSelector(Node):
             for d in self.selectedData:
                 if data.axes(d) != allowed_axes:
                     self.node_logger.error(
-                        f'Datasets {self.selectedData[0]} '
-                        f'(with axes {allowed_axes}) '
-                        f'and {d}(with axes {data.axes(d)}) are not compatible '
-                        f'and cannot be selected simultaneously.'
-                        )
+                        f"Datasets {self.selectedData[0]} "
+                        f"(with axes {allowed_axes}) "
+                        f"and {d}(with axes {data.axes(d)}) are not compatible "
+                        f"and cannot be selected simultaneously."
+                    )
                     return False
         return True
 
-    def _reduceData(self, data: Optional[DataDictBase]) -> Optional[DataDictBase]:
+    def _reduceData(self, data: DataDictBase | None) -> DataDictBase | None:
         if data is None:
             return None
         if isinstance(self.selectedData, str):
@@ -148,20 +152,19 @@ class DataSelector(Node):
         if self.force_numerical_data:
             for d, _ in ret.data_items():
                 d_data_vals = ret.data_vals(d)
-                dt = num.largest_numtype(d_data_vals,
-                                         include_integers=False)
+                dt = num.largest_numtype(d_data_vals, include_integers=False)
                 if dt is not None:
-                    ret[d]['values'] = ret[d]['values'].astype(dt)
+                    ret[d]["values"] = ret[d]["values"].astype(dt)
                 else:
                     return None
 
         return ret
 
-    def process(self, dataIn: Optional[DataDictBase] = None) -> Optional[Dict[str, Any]]:
+    def process(self, dataIn: DataDictBase | None = None) -> dict[str, Any] | None:
         data = super().process(dataIn=dataIn)
         if data is None:
             return None
-        data = data['dataOut']
+        data = data["dataOut"]
 
         # this is the actual operation of the node
         data = self._reduceData(data)

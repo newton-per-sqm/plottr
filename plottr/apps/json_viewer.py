@@ -2,8 +2,8 @@
 Script obtained from: https://doc-snapshots.qt.io/qtforpython-dev/examples/example_widgets_itemviews_jsonmodel.html
 """
 
-from typing import Any, List, Dict, Union, Optional
 from pathlib import Path
+from typing import Any, Optional
 
 from qtpy.QtCore import QAbstractItemModel, QModelIndex, QObject, Qt
 from qtpy.QtWidgets import QTreeView
@@ -17,7 +17,7 @@ class TreeItem:
         self._key = ""
         self._value = ""
         self._value_type: Any = None
-        self._children: List["TreeItem"] = []
+        self._children: list["TreeItem"] = []
 
     def appendChild(self, item: "TreeItem") -> None:
         """Add item as a child"""
@@ -71,7 +71,7 @@ class TreeItem:
 
     @classmethod
     def load(
-        cls, value: Union[List, Dict], parent: Optional["TreeItem"] = None, sort: bool = True
+        cls, value: list | dict, parent: Optional["TreeItem"] = None, sort: bool = True
     ) -> "TreeItem":
         """Create a 'root' TreeItem from a nested list or a nested dictonary
 
@@ -112,16 +112,16 @@ class TreeItem:
 
 
 class JsonModel(QAbstractItemModel):
-    """ An editable model of Json data """
+    """An editable model of Json data"""
 
-    def __init__(self, parent: Optional[QObject] = None):
+    def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
 
         self._rootItem = TreeItem()
         self._headers = ("key", "value")
 
     def clear(self) -> None:
-        """ Clear data from the model """
+        """Clear data from the model"""
         self.load({})
 
     def load(self, document: dict) -> bool:
@@ -131,9 +131,9 @@ class JsonModel(QAbstractItemModel):
             document (dict): JSON-compatible dictionary
         """
 
-        assert isinstance(
-            document, (dict, list, tuple)
-        ), "`document` must be of dict, list or tuple, " f"not {type(document)}"
+        assert isinstance(document, (dict, list, tuple)), (
+            "`document` must be of dict, list or tuple, " f"not {type(document)}"
+        )
 
         self.beginResetModel()
 
@@ -144,7 +144,7 @@ class JsonModel(QAbstractItemModel):
 
         return True
 
-    def data(self, index: QModelIndex, role: Qt.ItemDataRole) -> Any:  #type: ignore[override]
+    def data(self, index: QModelIndex, role: Qt.ItemDataRole) -> Any:  # type: ignore[override]
         """Override from QAbstractItemModel
 
         Return data from a json item according index and role
@@ -166,7 +166,7 @@ class JsonModel(QAbstractItemModel):
             if index.column() == 1:
                 return item.value
 
-    def setData(self, index: QModelIndex, value: Any, role: Qt.ItemDataRole) -> bool:  #type: ignore[override]
+    def setData(self, index: QModelIndex, value: Any, role: Qt.ItemDataRole) -> bool:  # type: ignore[override]
         """Override from QAbstractItemModel
 
         Set json item according index and role
@@ -191,9 +191,9 @@ class JsonModel(QAbstractItemModel):
 
         return False
 
-    def headerData(  #type: ignore[override]
+    def headerData(  # type: ignore[override]
         self, section: int, orientation: Qt.Orientation, role: Qt.ItemDataRole
-    ) -> Optional[str]:
+    ) -> str | None:
         """Override from QAbstractItemModel
 
         For the JsonModel, it returns only data for columns (orientation = Horizontal)
@@ -207,7 +207,9 @@ class JsonModel(QAbstractItemModel):
 
         return None
 
-    def index(self, row: int, column: int, parent: QModelIndex = QModelIndex()) -> QModelIndex:
+    def index(
+        self, row: int, column: int, parent: QModelIndex = QModelIndex()
+    ) -> QModelIndex:
         """Override from QAbstractItemModel
 
         Return index according row, column and parent
@@ -227,7 +229,7 @@ class JsonModel(QAbstractItemModel):
         else:
             return QModelIndex()
 
-    def parent(self, index: QModelIndex) -> QModelIndex:  #type: ignore[override]
+    def parent(self, index: QModelIndex) -> QModelIndex:  # type: ignore[override]
         """Override from QAbstractItemModel
 
         Return parent index of index
@@ -272,7 +274,7 @@ class JsonModel(QAbstractItemModel):
 
         Return flags of index
         """
-        flags = super(JsonModel, self).flags(index)
+        flags = super().flags(index)
 
         if index.column() == 1:
             return Qt.ItemIsEditable | flags
@@ -280,7 +282,6 @@ class JsonModel(QAbstractItemModel):
             return flags
 
     def to_json(self, item: Optional["TreeItem"] = None) -> Any:
-
         if item is None:
             item = self._rootItem
 

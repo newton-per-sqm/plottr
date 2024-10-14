@@ -3,7 +3,7 @@
 """
 
 from enum import Enum, auto, unique
-from typing import Any, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 from matplotlib import colors, rcParams
@@ -13,8 +13,8 @@ from matplotlib.image import AxesImage
 from plottr.utils import num
 from plottr.utils.num import centers2edges_2d, interp_meshgrid_2d
 
-__author__ = 'Wolfgang Pfaff'
-__license__ = 'MIT'
+__author__ = "Wolfgang Pfaff"
+__license__ = "MIT"
 
 
 @unique
@@ -43,14 +43,19 @@ class PlotType(Enum):
 class SymmetricNorm(colors.Normalize):
     """Color norm that's symmetric and linear around a center value."""
 
-    def __init__(self, vmin: Optional[float] = None,
-                 vmax: Optional[float] = None,
-                 vcenter: float = 0,
-                 clip: bool = False):
+    def __init__(
+        self,
+        vmin: float | None = None,
+        vmax: float | None = None,
+        vcenter: float = 0,
+        clip: bool = False,
+    ):
         super().__init__(vmin, vmax, clip)
         self.vcenter = vcenter
 
-    def __call__(self, value: float, clip: Optional[bool] = None) -> np.ma.core.MaskedArray:
+    def __call__(
+        self, value: float, clip: bool | None = None
+    ) -> np.ma.core.MaskedArray:
         vlim = max(abs(self.vmin - self.vcenter), abs(self.vmax - self.vcenter))
         self.vmax: float = vlim + self.vcenter
         self.vmin: float = -vlim + self.vcenter
@@ -58,13 +63,15 @@ class SymmetricNorm(colors.Normalize):
 
 
 # 2D plots
-def colorplot2d(ax: Axes,
-                x: Union[np.ndarray, np.ma.MaskedArray],
-                y: Union[np.ndarray, np.ma.MaskedArray],
-                z: Union[np.ndarray, np.ma.MaskedArray],
-                plotType: PlotType = PlotType.image,
-                axLabels: Tuple[Optional[str], Optional[str], Optional[str]] = ('', '', ''),
-                **kw: Any) -> Optional[AxesImage]:
+def colorplot2d(
+    ax: Axes,
+    x: np.ndarray | np.ma.MaskedArray,
+    y: np.ndarray | np.ma.MaskedArray,
+    z: np.ndarray | np.ma.MaskedArray,
+    plotType: PlotType = PlotType.image,
+    axLabels: tuple[str | None, str | None, str | None] = ("", "", ""),
+    **kw: Any,
+) -> AxesImage | None:
     """make a 2d colorplot. what plot is made, depends on `plotType`.
     Any of the 2d plot types in :class:`PlotType` works.
 
@@ -84,7 +91,7 @@ def colorplot2d(ax: Axes,
     - :attr:`PlotType.scatter2d` --
         matplotlib's `scatter`
     """
-    cmap = kw.pop('cmap', rcParams['image.cmap'])
+    cmap = kw.pop("cmap", rcParams["image.cmap"])
 
     # first we need to check if our grid can be plotted nicely.
     if plotType in [PlotType.image, PlotType.colormesh]:
@@ -136,8 +143,9 @@ def colorplot2d(ax: Axes,
     return im
 
 
-def ppcolormesh_from_meshgrid(ax: Axes, x: np.ndarray, y: np.ndarray,
-                              z: np.ndarray, **kw: Any) -> Union[AxesImage, None]:
+def ppcolormesh_from_meshgrid(
+    ax: Axes, x: np.ndarray, y: np.ndarray, z: np.ndarray, **kw: Any
+) -> AxesImage | None:
     r"""Plot a pcolormesh with some reasonable defaults.
     Input are the corresponding arrays from a 2D ``MeshgridDataDict``.
 
@@ -165,8 +173,9 @@ def ppcolormesh_from_meshgrid(ax: Axes, x: np.ndarray, y: np.ndarray,
     return im
 
 
-def plotImage(ax: Axes, x: np.ndarray, y: np.ndarray,
-              z: np.ndarray, **kw: Any) -> AxesImage:
+def plotImage(
+    ax: Axes, x: np.ndarray, y: np.ndarray, z: np.ndarray, **kw: Any
+) -> AxesImage:
     """Plot 2d meshgrid data as image.
 
     :param ax: matplotlib subPlots to plot the image in.
@@ -203,6 +212,5 @@ def plotImage(ax: Axes, x: np.ndarray, y: np.ndarray,
     if y.shape[1] > 1:
         z = z if y[0, 0] < y[0, 1] else z[:, ::-1]
 
-    im = ax.imshow(z.T, aspect='auto', origin='lower',
-                   extent=extent, **kw)
+    im = ax.imshow(z.T, aspect="auto", origin="lower", extent=extent, **kw)
     return im
