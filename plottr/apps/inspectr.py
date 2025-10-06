@@ -610,7 +610,10 @@ class QCodesDBInspector(QtWidgets.QMainWindow):
         # set tag in the database
         assert self.filepath is not None
         runId = int(item.text(0))
-        ds = load_dataset_from(self.filepath, runId)
+        if sys.version_info >= (3, 11):
+            ds = load_dataset_from(self.filepath, runId, read_only=False)
+        else:
+            ds = load_dataset_from(self.filepath, runId)
         ds.add_metadata('inspectr_tag', tag)
 
         # set tag in self.dbdf
