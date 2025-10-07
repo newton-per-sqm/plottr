@@ -162,7 +162,7 @@ def get_ds_info(ds: 'DataSetProtocol', get_structure: bool = True) -> DataSetInf
     return data
 
 
-def load_dataset_from(path: str, run_id: int, read_only: bool = False) -> 'DataSetProtocol':
+def load_dataset_from(path: str, run_id: int, read_only: bool = True) -> 'DataSetProtocol':
     """
     Loads ``DataSet`` with the given ``run_id`` from a database file that
     is located in in the given ``path``.
