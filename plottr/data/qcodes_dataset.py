@@ -5,6 +5,7 @@ Dealing with qcodes dataset (the database) data in plottr.
 """
 import os
 import sys
+from contextlib import closing
 from itertools import chain
 from operator import attrgetter
 from typing import Dict, List, Set, Union, TYPE_CHECKING, Any, Tuple, Optional, cast
@@ -191,22 +192,23 @@ def get_runs_from_db(path: str, start: int = 0,
     """
     initialise_or_create_database_at(path)
     if sys.version_info >= (3, 11):
-        conn = conn_from_dbpath_or_conn(read_only=True)
+        conn = conn_from_dbpath_or_conn(conn=None, path_to_db=path, read_only=True)
     else:
-        conn = conn_from_dbpath_or_conn()
-    exps = experiments(conn=conn)
+        conn = conn_from_dbpath_or_conn(conn=None, path_to_db=path)
+    with closing(conn) as conn_:
+        exps = experiments(conn=conn_)
 
-    datasets = sorted(
-        chain.from_iterable(exp.data_sets() for exp in exps),
-        key=attrgetter('run_id')
-    )
+        datasets = sorted(
+            chain.from_iterable(exp.data_sets() for exp in exps),
+            key=attrgetter('run_id')
+        )
 
-    # There is no need for checking whether ``stop`` is ``None`` because if
-    # it is the following is simply equivalent to ``datasets[start:]``
-    datasets = datasets[start:stop]
+        # There is no need for checking whether ``stop`` is ``None`` because if
+        # it is the following is simply equivalent to ``datasets[start:]``
+        datasets = datasets[start:stop]
 
-    overview = {ds.run_id: get_ds_info(ds, get_structure=get_structure)
-                for ds in datasets}
+        overview = {ds.run_id: get_ds_info(ds, get_structure=get_structure)
+                    for ds in datasets}
     return overview
 
 
